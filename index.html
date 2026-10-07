@@ -526,6 +526,13 @@
                 }
             };
 
+            const MAX_STARS = useMemo(() => {
+                return LEVEL_DATA[1].items.length + 
+                       LEVEL_DATA[2].parts.reduce((acc, part) => acc + part.questions.length, 0) + 
+                       LEVEL_DATA[3].questions.length + 
+                       LEVEL_DATA[4].blanks.length;
+            }, []);
+
             const getBackgroundImage = () => {
                 switch (currentView) {
                     case 'level1': return BG_LEVEL_1;
@@ -602,7 +609,7 @@
                             </button>
                             <div className="flex items-center gap-2 bg-black/30 px-3 py-1.5 xl:px-5 xl:py-2 rounded-full text-sm md:text-base xl:text-xl border border-white/20 shadow-inner">
                               <Icons.Star className="w-4 h-4 md:w-5 md:h-5 xl:w-6 xl:h-6 text-yellow-400 fill-yellow-400 animate-pulse" />
-                              <span className="font-bold text-white">{correctCount}<span className="text-[10px] md:text-xs xl:text-sm text-gray-300 font-normal ml-1">/22</span></span>
+                              <span className="font-bold text-white">{correctCount}<span className="text-[10px] md:text-xs xl:text-sm text-gray-300 font-normal ml-1">/{MAX_STARS}</span></span>
                             </div>
                             <button onClick={toggleFullscreen} className="p-2 xl:p-3 hover:bg-white/20 rounded-full hidden sm:block transition active:scale-95 touch-manipulation">
                                {isFullscreen ? <Icons.Minimize className="w-5 h-5 md:w-6 md:h-6 xl:w-8 xl:h-8"/> : <Icons.Maximize className="w-5 h-5 md:w-6 md:h-6 xl:w-8 xl:h-8"/>}
