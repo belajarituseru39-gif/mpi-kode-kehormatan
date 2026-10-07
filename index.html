@@ -1,0 +1,2073 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <base target="_top">
+    <title>Petualangan Pramuka: Kode Kehormatan</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone@7.24.4/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Polyfill Mobile Drag Drop (Untuk Layar Sentuh / Tablet / IFP) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/default.css">
+    <script src="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mobile-drag-drop@2.3.0-rc.2/scroll-behaviour.min.js"></script>
+    
+    <script>
+        // Inisialisasi Polyfill agar Drag and Drop berfungsi mulus di Layar Sentuh
+        window.addEventListener('DOMContentLoaded', function() {
+            MobileDragDrop.polyfill({
+                dragImageTranslateOverride: MobileDragDrop.scrollBehaviourDragImageTranslateOverride
+            });
+            window.addEventListener('touchmove', function() {}, {passive: false});
+        });
+    </script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            font-family: 'Nunito', sans-serif;
+            background-color: #fef3c7;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.4); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(139, 69, 19, 0.4); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(139, 69, 19, 0.7); }
+        
+        @media (min-width: 1280px) {
+            .custom-scrollbar::-webkit-scrollbar { width: 12px; }
+        }
+        
+        @keyframes bounce-slow {
+            0%, 100% { transform: translateY(-2%); }
+            50% { transform: translateY(2%); }
+        }
+        .animate-bounce-slow { animation: bounce-slow 3s infinite ease-in-out; }
+        
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fade-in 0.5s ease-out forwards; }
+
+        @keyframes pop-in {
+            0% { transform: scale(0); opacity: 0; }
+            80% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop-in { animation: pop-in 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+
+        .text-outline { text-shadow: 2px 2px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff, 1px 1px 0 #fff; }
+    </style>
+</head>
+<body>
+    <div id="root" class="h-[100dvh] w-full"></div>
+
+    <script type="text/babel" data-presets="react">
+        /** @jsx React.createElement */
+        /** @jsxFrag React.Fragment */
+
+        const { useState, useEffect, useRef, useMemo } = React;
+
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/mock-url/exec"; 
+
+        let audioCtx = null;
+        const playSfx = (type) => {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return; 
+
+                if (!audioCtx) {
+                    audioCtx = new AudioContext();
+                }
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                if (type === 'correct') {
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(523.25, audioCtx.currentTime); 
+                    oscillator.frequency.exponentialRampToValueAtTime(1046.50, audioCtx.currentTime + 0.1); 
+                    gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                    oscillator.start(audioCtx.currentTime);
+                    oscillator.stop(audioCtx.currentTime + 0.3);
+                } else if (type === 'incorrect') {
+                    oscillator.type = 'sawtooth';
+                    oscillator.frequency.setValueAtTime(150, audioCtx.currentTime); 
+                    oscillator.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.2); 
+                    gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                    oscillator.start(audioCtx.currentTime);
+                    oscillator.stop(audioCtx.currentTime + 0.2);
+                } else if (type === 'click') {
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(400, audioCtx.currentTime); 
+                    oscillator.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.05); 
+                    gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+                    oscillator.start(audioCtx.currentTime);
+                    oscillator.stop(audioCtx.currentTime + 0.05);
+                }
+            } catch (err) {
+                console.warn("Audio diblokir browser.", err);
+            }
+        };
+
+        document.addEventListener('click', (e) => {
+            const isClickable = e.target.closest('button, select, [draggable="true"], .cursor-pointer');
+            if (isClickable) playSfx('click');
+        });
+
+        const shuffleArray = (array) => {
+            const newArr = [...array];
+            for (let i = newArr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+            }
+            return newArr;
+        };
+
+        const Icon = ({ path, className, onClick }) => (
+            <svg onClick={onClick} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{path}</svg>
+        );
+
+        const Icons = {
+            Map: ({className}) => <Icon className={className} path={<><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></>} />,
+            Star: ({className, onClick}) => <Icon onClick={onClick} className={className} path={<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>} />,
+            Users: ({className}) => <Icon className={className} path={<><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></>} />,
+            User: ({className}) => <Icon className={className} path={<><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></>} />,
+            School: ({className}) => <Icon className={className} path={<><path d="M4 6h16"></path><path d="M4 6v14"></path><path d="M20 6v14"></path><path d="M12 22V10"></path><path d="M4 10h16"></path><path d="M4 14h16"></path><path d="M4 18h16"></path><path d="M12 2l-8 4h16z"></path></>} />,
+            ArrowRight: ({className}) => <Icon className={className} path={<><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></>} />,
+            Award: ({className}) => <Icon className={className} path={<><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></>} />,
+            BookOpen: ({className}) => <Icon className={className} path={<><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></>} />,
+            CheckCircle: ({className}) => <Icon className={className} path={<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></>} />,
+            Menu: ({className}) => <Icon className={className} path={<><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></>} />,
+            X: ({className}) => <Icon className={className} path={<><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></>} />,
+            Maximize: ({className}) => <Icon className={className} path={<><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></>} />,
+            Minimize: ({className}) => <Icon className={className} path={<><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"></path></>} />,
+            RefreshCcw: ({className}) => <Icon className={className} path={<><polyline points="1 23 1 17 7 17"></polyline><polyline points="23 1 23 7 17 7"></polyline><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"></path></>} />,
+            Home: ({className}) => <Icon className={className} path={<><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></>} />,
+            Lock: ({className}) => <Icon className={className} path={<><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></>} />,
+            Save: ({className}) => <Icon className={className} path={<><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></>} />,
+            Volume2: ({className}) => <Icon className={className} path={<><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.75"></path></>} />,
+            VolumeX: ({className}) => <Icon className={className} path={<><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></>} />,
+            Zap: ({className}) => <Icon className={className} path={<><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></>} />,
+            Tent: ({className}) => <Icon className={className} path={<><path d="M12 2L2 22h20L12 2z"/><path d="M12 13l-4 9"/><path d="M12 13l4 9"/></>} />
+        };
+
+        const LOGO_IMAGE_URL = "https://i.imgur.com/otW9ptS.jpeg"; 
+        const MAIN_BG_IMAGE = "https://i.imgur.com/5B9HYng.jpeg"; 
+        const MAP_IMAGE_URL = "https://i.imgur.com/5B9HYng.jpeg"; 
+        const BACKSONG_URL = "https://github.com/belajarituseru39-gif/lagu-pramuka/raw/refs/heads/main/Pramuka%20Keren.mp3"; 
+
+        // Untuk background antar pos, kita buat selaras dengan tema (bisa berbeda atau sama)
+        const BG_LEVEL_1 = "https://images.unsplash.com/photo-1506751470038-d523620e1d10?q=80&w=2028&auto=format&fit=crop"; 
+        const BG_LEVEL_2 = "https://images.unsplash.com/photo-1582570739828-976451ee9393?q=80&w=2070&auto=format&fit=crop"; 
+        const BG_LEVEL_3 = "https://images.unsplash.com/photo-1501504905252-473c47e087f8?q=80&w=1974&auto=format&fit=crop"; 
+        const BG_LEVEL_4 = "https://images.unsplash.com/photo-1533227653609-b420042456e4?q=80&w=2070&auto=format&fit=crop"; 
+        const BG_LEVEL_5 = "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=2070&auto=format&fit=crop"; 
+
+        const MAP_POSITIONS = [
+            { level: 1, top: '45%', left: '25%' }, 
+            { level: 2, top: '70%', left: '40%' }, 
+            { level: 3, top: '35%', left: '55%' }, 
+            { level: 4, top: '60%', left: '75%' }, 
+            { level: 5, top: '30%', left: '85%' }, 
+        ];
+
+        const LEVEL_DATA = {
+            1: {
+                title: "Perkemahan Dasadarma",
+                subtitle: "Misi: Mengurutkan Dasadarma",
+                stimulusTitle: "⛺ TANTANGAN: Susunan Dasadarma",
+                stimulusText: "Halo Pandu! Uji ingatanmu tentang 10 ketentuan moral Pramuka Penggalang. Susunlah Dasadarma di bawah ini secara berurutan dari nomor 1 hingga 10!",
+                instruction: "TAP/KLIK potongan kalimat di bawah ini, lalu letakkan pada nomor urut yang tepat!",
+                items: [
+                    { id: 'item1', text: 'Takwa kepada Tuhan Yang Maha Esa.', matchId: 'd1' },
+                    { id: 'item2', text: 'Cinta alam dan kasih sayang sesama manusia.', matchId: 'd2' },
+                    { id: 'item3', text: 'Patriot yang sopan dan kesatria.', matchId: 'd3' },
+                    { id: 'item4', text: 'Patuh dan suka bermusyawarah.', matchId: 'd4' },
+                    { id: 'item5', text: 'Rela menolong dan tabah.', matchId: 'd5' },
+                    { id: 'item6', text: 'Rajin, trampil dan gembira.', matchId: 'd6' },
+                    { id: 'item7', text: 'Hemat, cermat dan bersahaja.', matchId: 'd7' },
+                    { id: 'item8', text: 'Disiplin, berani dan setia.', matchId: 'd8' },
+                    { id: 'item9', text: 'Bertanggungjawab dan dapat dipercaya.', matchId: 'd9' },
+                    { id: 'item10', text: 'Suci dalam pikiran, perkataan dan perbuatan.', matchId: 'd10' }
+                ],
+                targets: [
+                    { id: 'd1', label: '1.' },
+                    { id: 'd2', label: '2.' },
+                    { id: 'd3', label: '3.' },
+                    { id: 'd4', label: '4.' },
+                    { id: 'd5', label: '5.' },
+                    { id: 'd6', label: '6.' },
+                    { id: 'd7', label: '7.' },
+                    { id: 'd8', label: '8.' },
+                    { id: 'd9', label: '9.' },
+                    { id: 'd10', label: '10.' }
+                ]
+            },
+            2: {
+                title: "Jejak Satya & Darma",
+                subtitle: "Misi: Studi Kasus Nilai Pramuka",
+                parts: [
+                    {
+                        stimulusTitle: "⛺ KASUS 1: Pengelolaan Uang Saku",
+                        stimulusText: "Rina memiliki sisa uang saku setelah kegiatan kemah. Ia tidak menghambur-hamburkan uang tersebut untuk jajan sembarangan. Ia cermat mengatur pengeluarannya, memprioritaskan hal yang penting, dan membiasakan diri untuk menabung sisanya di celengan regu.",
+                        questions: [
+                            {
+                                id: 'q1', type: 'single',
+                                text: "Sikap Rina merupakan penerapan nilai Dasadarma yaitu...",
+                                options: [
+                                    "Hemat, cermat dan bersahaja", 
+                                    "Rajin, terampil, dan gembira", 
+                                    "Disiplin, berani, dan setia", 
+                                    "Bertanggungjawab dan dapat dipercaya"
+                                ],
+                                correct: 0
+                            }
+                        ]
+                    },
+                    {
+                        stimulusTitle: "⛺ KASUS 2: Diskusi Regu",
+                        stimulusText: "Saat merencanakan pentas seni, Regu Harimau memiliki banyak pendapat yang berbeda. Toni sebagai pemimpin regu mengajak anggotanya untuk tidak memaksakan kehendak, menghargai pendapat satu sama lain, dan merumuskan kesepakatan yang memperhatikan kepentingan orang banyak.",
+                        questions: [
+                            {
+                                id: 'q2', type: 'single',
+                                text: "Tindakan Toni dan Regu Harimau mencerminkan pengamalan Dasadarma...",
+                                options: [
+                                    "Patriot yang sopan dan kesatria",
+                                    "Patuh dan suka bermusyawarah", 
+                                    "Rela menolong dan tabah", 
+                                    "Suci dalam pikiran, perkataan, dan perbuatan"
+                                ],
+                                correct: 1
+                            }
+                        ]
+                    },
+                    {
+                        stimulusTitle: "⛺ KASUS 3: Mengakui Kesalahan",
+                        stimulusText: "Andi tanpa sengaja merusak alat masak regu saat membersihkannya. Ia tidak menghindar dari tanggung jawab dengan mencari-cari alasan, tidak melempar kesalahan pada teman lain (tidak lempar batu sembunyi tangan), melainkan dengan jujur berani mengakuinya di depan pembina.",
+                        questions: [
+                            {
+                                id: 'q3', type: 'single',
+                                text: "Perilaku Andi merupakan cerminan dari nilai...",
+                                options: [
+                                    "Disiplin, berani, dan setia",
+                                    "Suci dalam pikiran, perkataan, dan perbuatan",
+                                    "Bertanggung jawab dan dapat dipercaya", 
+                                    "Rajin, terampil, dan gembira"
+                                ],
+                                correct: 2
+                            }
+                        ]
+                    },
+                    {
+                        stimulusTitle: "⛺ KASUS 4: Menjalankan Tugas",
+                        stimulusText: "Meskipun tugas membuat rak sepatu dari tongkat dirasa cukup sulit, regu Melati tidak pernah menolak segala tugas yang diberikan padanya. Mereka pantang menunda pekerjaan, tidak cepat puas, dan senantiasa bergembira dalam setiap kegiatan.",
+                        questions: [
+                            {
+                                id: 'q4', type: 'single',
+                                text: "Sikap regu Melati sesuai dengan nilai pengamalan Dasadarma yaitu...",
+                                options: [
+                                    "Disiplin, berani, dan setia",
+                                    "Rela menolong dan tabah",
+                                    "Rajin, terampil, dan gembira", 
+                                    "Patriot yang sopan dan kesatria"
+                                ],
+                                correct: 2
+                            }
+                        ]
+                    },
+                    {
+                        stimulusTitle: "⛺ KASUS 5: Menjaga Perasaan",
+                        stimulusText: "Anton selalu melihat hikmah dari setiap kejadian. Ia memiliki pribadi yang bersih pikiran, tidak memiliki rasa dengki dan iri saat regu lain juara, serta senantiasa berkata benar dan jujur tanpa menyinggung perasaan teman-temannya.",
+                        questions: [
+                            {
+                                id: 'q5', type: 'single',
+                                text: "Nilai luhur apa yang sedang diamalkan oleh Anton?",
+                                options: [
+                                    "Cinta alam dan kasih sayang sesama manusia",
+                                    "Patriot yang sopan dan kesatria",
+                                    "Bertanggung jawab dan dapat dipercaya",
+                                    "Suci dalam pikiran, perkataan, dan perbuatan" 
+                                ],
+                                correct: 3
+                            }
+                        ]
+                    }
+                ]
+            },
+            3: {
+                title: "Api Unggun Kebenaran",
+                subtitle: "Misi: Evaluasi Kasus Dasadarma",
+                stimulusTitle: "⛺ TANTANGAN: Ujian Integritas",
+                stimulusText: "Pemimpin Regu memberikan beberapa kasus perilaku anggota Pramuka. Evaluasi apakah tindakan dalam kasus tersebut Benar atau Salah berdasarkan nilai-nilai Dasadarma, lalu pilih alasan yang paling tepat!",
+                questions: [
+                    {
+                        id: 'k1', text: "KASUS 1: Doni selalu memotong pembicaraan temannya saat diskusi regu karena ia merasa idenya paling bagus, dan ia sering memaksakan kehendaknya pada anggota lain.",
+                        correctStatement: 'Salah',
+                        reasonOptions: [
+                            "Berdasarkan nilai 'Patuh dan suka bermusyawarah', pramuka harus merumuskan kesepakatan dan menghargai pendapat orang lain.", 
+                            "Pramuka harus berani dan disiplin dalam mengambil keputusan.", 
+                            "Seorang pramuka tidak boleh banyak bicara saat musyawarah.", 
+                            "Pramuka harus cepat menyelesaikan masalah tanpa basa-basi."
+                        ],
+                        correctReasonIndex: 0
+                    },
+                    {
+                        id: 'k2', text: "KASUS 2: Siti menemukan dompet yang terjatuh di jalan. Meskipun tidak ada yang melihat, ia tidak mengambil isinya dan langsung menyerahkannya ke kantor polisi.",
+                        correctStatement: 'Benar',
+                        reasonOptions: [
+                            "Pramuka senantiasa jujur dan tidak berbuat hal buruk meski tidak ada orang yang tahu (Bertanggung jawab dan dapat dipercaya).", 
+                            "Siti sedang mengamalkan nilai 'Hemat, cermat, dan bersahaja'.", 
+                            "Siti adalah seorang Patriot yang sopan dan berani.", 
+                            "Agar Siti mendapatkan hadiah dari pemilik dompet."
+                        ],
+                        correctReasonIndex: 0
+                    },
+                    {
+                        id: 'k3', text: "KASUS 3: Saat melihat seorang nenek kesulitan mencari tempat duduk di stasiun yang penuh sesak, Budi berpura-pura tidur agar tidak perlu memberikan tempat duduknya.",
+                        correctStatement: 'Salah',
+                        reasonOptions: [
+                            "Berdasarkan nilai 'Rela menolong dan tabah', pramuka harus segera memberikan tempat duduk di tempat umum kepada orang tua.", 
+                            "Nenek tersebut seharusnya meminta tolong langsung kepada petugas keamanan stasiun.", 
+                            "Budi sedang mempraktekkan 'Hemat dan cermat' dalam menyimpan energi untuk kemah.", 
+                            "Budi sudah bertanggung jawab atas tiket yang ia beli sendiri."
+                        ],
+                        correctReasonIndex: 0
+                    },
+                    {
+                        id: 'k4', text: "KASUS 4: Dalam sebuah kegiatan kemah kebangsaan, Dika mengikuti upacara bendera Merah Putih dengan khidmat dan berusaha memahami nilai-nilai luhur bangsa.",
+                        correctStatement: 'Benar',
+                        reasonOptions: [
+                            "Hal itu adalah wujud 'Patriot yang sopan dan ksatria' yang menghormati lambang negara dan membela ibu pertiwi.", 
+                            "Upacara adalah wujud nyata 'Takwa kepada Tuhan YME'.", 
+                            "Upacara melatih fisik agar sesuai dengan nilai 'Rajin, terampil, dan gembira'.", 
+                            "Hal tersebut semata-mata adalah kewajiban siswa sekolah pada umumnya."
+                        ],
+                        correctReasonIndex: 0
+                    },
+                    {
+                        id: 'k5', text: "KASUS 5: Rina terlalu cepat mengkritik dan menyalahkan teman satu regunya jika pekerjaan lambat, serta sering mengeluh dalam menghadapi kesulitan selama perkemahan.",
+                        correctStatement: 'Salah',
+                        reasonOptions: [
+                            "Pramuka seharusnya tidak cepat menyalahkan orang lain (Rajin, terampil, gembira) dan pantang mundur dalam kesulitan (Rela menolong dan tabah).", 
+                            "Rina sedang menerapkan kedisiplinan yang sangat ketat sesuai Dasadarma ke-8.", 
+                            "Rina berhak marah karena ia merasa paling bertanggung jawab sebagai pemimpin regu.", 
+                            "Mengeluh adalah reaksi normal dan wujud dari 'Suci dalam pikiran'."
+                        ],
+                        correctReasonIndex: 0
+                    }
+                ]
+            },
+            4: {
+                title: "Pos Lintas Alam",
+                subtitle: "Misi: Melengkapi Catatan Rumpang",
+                stimulusTitle: "⛺ TANTANGAN: Melengkapi Logbook Rumpang",
+                stimulusText: "Seorang anggota regumu lupa mencatat beberapa istilah penting dalam materi Kode Kehormatan. Bantu ia melengkapinya dengan kata yang tepat!",
+                instruction: "Tarik/Klik kata yang tepat ke dalam kotak yang kosong.",
+                options: [
+                    { id: 'o1', text: 'Sukarela' },
+                    { id: 'o2', text: 'Dwisatya' },
+                    { id: 'o3', text: 'Dwidarma' },
+                    { id: 'o4', text: 'Trisatya' },
+                    { id: 'o5', text: 'Dasadarma' },
+                    { id: 'o6', text: 'Moral' },
+                    { id: 'o7', text: 'Terpaksa' },
+                    { id: 'o8', text: 'Pancasila' },
+                    { id: 'o9', text: 'Hukum' }
+                ],
+                paragraphSegments: [
+                    "Kode Kehormatan Pramuka terdiri atas janji yang disebut Satya dan ketentuan ",
+                    " yang disebut Darma. Satya diucapkan secara ",
+                    " oleh seorang anggota Pramuka. Untuk golongan Siaga, janji tersebut bernama ",
+                    " dan ketentuan moralnya disebut ",
+                    ". Sedangkan untuk Penggalang, janji tersebut bernama ",
+                    " dan ketentuan moralnya disebut ",
+                    "."
+                ],
+                blanks: [
+                    { id: 'b1', correct: 'Moral' },
+                    { id: 'b2', correct: 'Sukarela' },
+                    { id: 'b3', correct: 'Dwisatya' },
+                    { id: 'b4', correct: 'Dwidarma' },
+                    { id: 'b5', correct: 'Trisatya' },
+                    { id: 'b6', correct: 'Dasadarma' }
+                ]
+            },
+            5: {
+                title: "Puncak Penegak",
+                subtitle: "Misi: Janji & Refleksi",
+                questions: {
+                    q1: "1. Berikan rating bintang (1-5) dan ceritakan pengalamanmu belajar Kode Kehormatan hari ini!",
+                    q2: "2. Evaluasi: Poin Dasadarma manakah yang menurutmu paling sulit untuk selalu dilakukan? Mengapa?",
+                    q3: "3. Tuliskan satu janji tindakan nyata dari Dasa Darma yang akan kamu lakukan di rumah atau di sekolah!"
+                }
+            }
+        };
+
+        const VIDEO1_QUESTIONS = [
+            { id: 'vq1', text: "Apakah yang dimaksud dengan Kode Kehormatan Pramuka?", options: ["A. Lagu kebangsaan", "B. Janji (Satya) dan ketentuan moral (Darma)", "C. Aturan seragam", "D. Cara berkemah"], correct: 1 },
+            { id: 'vq2', text: "Bagaimana cara pengucapan janji (Satya) Pramuka?", options: ["A. Diucapkan dengan terpaksa", "B. Diucapkan secara rahasia", "C. Diucapkan secara sukarela", "D. Diucapkan hanya oleh pembina"], correct: 2 },
+            { id: 'vq3', text: "Sistem nilai apa yang mendasari sikap dan perilaku setiap anggota Gerakan Pramuka?", options: ["A. Kode Kehormatan Pramuka", "B. Sumpah Pemuda", "C. Undang-Undang Dasar", "D. Buku Sejarah"], correct: 0 }
+        ];
+
+        const PODCAST_QUESTIONS = [
+            { id: 'pq1', text: 'Janji dalam Kode Kehormatan Pramuka', matchId: 'optD' },
+            { id: 'pq2', text: 'Ketentuan moral dalam Kode Kehormatan Pramuka', matchId: 'optA' },
+            { id: 'pq3', text: 'Janji untuk golongan Pramuka Siaga', matchId: 'optE' },
+            { id: 'pq4', text: '10 Ketentuan Moral untuk Penggalang/Penegak', matchId: 'optC' },
+            { id: 'pq5', text: 'Janji untuk golongan Pramuka Penggalang', matchId: 'optG' }
+        ];
+
+        const PODCAST_OPTIONS = [
+            { id: 'optA', text: 'Darma' }, { id: 'optB', text: 'Pancasila' }, { id: 'optC', text: 'Dasadarma' },
+            { id: 'optD', text: 'Satya' }, { id: 'optE', text: 'Dwisatya' }, { id: 'optF', text: 'Dwidarma' },
+            { id: 'optG', text: 'Trisatya' }
+        ];
+
+        const BUKU_QUESTIONS = [
+            { id: 'bq1', text: "Berdasarkan pengertian kode kehormatan, janji pramuka diucapkan secara...", options: ["A. Terpaksa", "B. Sukarela", "C. Diam-diam", "D. Berkelompok saja"], correct: 1 },
+            { id: 'bq2', text: "Ketentuan moral untuk Pramuka Penggalang disebut dengan istilah...", options: ["A. Dwidarma", "B. Trisatya", "C. Dasadarma", "D. Pancasila"], correct: 2 },
+            { id: 'bq3', text: "Kode Kehormatan yang menyebutkan 'Siaga itu patuh pada ayah dan ibunya' terdapat pada...", options: ["A. Dwisatya", "B. Dwidarma", "C. Trisatya", "D. Dasadarma"], correct: 1 },
+            { id: 'bq4', text: "Pada Trisatya, seorang pramuka berjanji untuk menjalankan kewajiban terhadap...", options: ["A. Diri sendiri saja", "B. Teman sebaya", "C. Tuhan, NKRI, dan Pancasila", "D. Guru dan Kepala Sekolah"], correct: 2 },
+            { id: 'bq5', text: "Bunyi Dasadarma poin ke-8 adalah...", options: ["A. Disiplin, berani dan setia", "B. Rajin, trampil dan gembira", "C. Bertanggungjawab dan dapat dipercaya", "D. Suci dalam pikiran, perkataan dan perbuatan"], correct: 0 }
+        ];
+
+        function PetualanganPramuka() {
+            const [currentView, setCurrentView] = useState('intro'); 
+            const [unlockedLevel, setUnlockedLevel] = useState(1); 
+            const [correctCount, setCorrectCount] = useState(0); 
+            const [userData, setUserData] = useState({});
+            const [isMenuOpen, setIsMenuOpen] = useState(false);
+            const [isFullscreen, setIsFullscreen] = useState(false);
+            const [isMusicPlaying, setIsMusicPlaying] = useState(false);
+            
+            const [playerName, setPlayerName] = useState("");
+            const [playerSchool, setPlayerSchool] = useState("");
+
+            const audioRef = useRef(null);
+
+            useEffect(() => {
+                if (audioRef.current) {
+                    if (isMusicPlaying) {
+                        const playPromise = audioRef.current.play();
+                        if (playPromise !== undefined) {
+                            playPromise.catch(error => {
+                                console.log("Autoplay blocked/failed:", error);
+                                setIsMusicPlaying(false);
+                            });
+                        }
+                    } else {
+                        audioRef.current.pause();
+                    }
+                }
+            }, [isMusicPlaying]);
+
+            const toggleMusic = () => setIsMusicPlaying(!isMusicPlaying);
+
+            const handleStartGame = (name, school) => {
+                setPlayerName(name);
+                setPlayerSchool(school);
+                setCurrentView('tujuan_panduan'); 
+                setIsMusicPlaying(true); 
+            };
+
+            const handleLevelComplete = (levelNum) => {
+                if (levelNum < 5) {
+                    setUnlockedLevel(prev => Math.max(prev, levelNum + 1));
+                    setCurrentView('map');
+                } else {
+                    setCurrentView('end');
+                }
+            };
+
+            const startLevel = (levelNum) => {
+                setCurrentView(`level${levelNum}`);
+            };
+
+            const updateUserData = (key, value) => setUserData(prev => ({ ...prev, [key]: value }));
+            const incrementCorrect = () => setCorrectCount(prev => prev + 1);
+
+            const toggleFullscreen = () => {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch((e) => console.log(e));
+                    setIsFullscreen(true);
+                } else {
+                    if (document.exitFullscreen) {
+                        document.exitFullscreen();
+                        setIsFullscreen(false);
+                    }
+                }
+            };
+
+            const getBackgroundImage = () => {
+                switch (currentView) {
+                    case 'level1': return BG_LEVEL_1;
+                    case 'level2': return BG_LEVEL_2;
+                    case 'level3': return BG_LEVEL_3;
+                    case 'level4': return BG_LEVEL_4;
+                    case 'level5': return BG_LEVEL_5;
+                    case 'map': return MAP_IMAGE_URL;
+                    default: return MAIN_BG_IMAGE;
+                }
+            };
+
+            let currentIslandName = "";
+            let currentMission = "";
+            let currentIcon = "";
+            if (currentView.startsWith('level')) {
+                const lvl = parseInt(currentView.replace('level', ''));
+                if (LEVEL_DATA[lvl]) {
+                    currentIslandName = LEVEL_DATA[lvl].title;
+                    currentMission = LEVEL_DATA[lvl].subtitle;
+                    const icons = ["", "⛺", "📖", "🔥", "🧭", "⭐"];
+                    currentIcon = icons[lvl];
+                }
+            }
+
+            return (
+                <div className="h-[100dvh] w-full font-sans text-gray-800 flex flex-col transition-all duration-700 ease-in-out overflow-hidden"
+                     style={{ 
+                       backgroundImage: `url(${getBackgroundImage()})`,
+                       backgroundSize: 'cover',
+                       backgroundPosition: 'center',
+                       backgroundAttachment: 'fixed',
+                     }}>
+                  
+                  <audio ref={audioRef} src={BACKSONG_URL} loop preload="auto" />
+                  
+                  <div className="fixed inset-0 bg-black/40 pointer-events-none z-0 transition-opacity duration-700"></div>
+
+                  <div className="flex flex-col w-full max-w-[1800px] mx-auto h-full relative z-10">
+                    
+                    {/* Header Top Bar */}
+                    <div className="flex-none z-40 bg-gradient-to-r from-amber-700 to-amber-900 p-2 md:p-3 xl:p-4 text-white flex justify-between items-center shadow-md rounded-b-xl mx-2 mt-2 gap-2 border-b-4 border-amber-950">
+                        <div className="flex items-center gap-2 md:gap-3 xl:gap-4 flex-shrink-0 w-1/4">
+                             <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="p-2 xl:p-3 hover:bg-white/20 rounded-full transition active:scale-95 touch-manipulation">
+                               {isMenuOpen ? <Icons.X className="w-6 h-6 xl:w-8 xl:h-8" /> : <Icons.Menu className="w-6 h-6 xl:w-8 xl:h-8" />}
+                             </button>
+                             <img src={LOGO_IMAGE_URL} alt="Logo" className="w-8 h-8 xl:w-12 xl:h-12 object-contain drop-shadow-md hidden sm:block rounded-full bg-white p-1" />
+                             <div className="hidden lg:flex flex-col">
+                               <h1 className="font-bold text-lg xl:text-xl 2xl:text-2xl leading-none drop-shadow-md tracking-wide text-yellow-300">Petualangan Pramuka</h1>
+                             </div>
+                        </div>
+
+                        <div className="flex-1 flex flex-col items-center justify-center text-center overflow-hidden">
+                            {currentIslandName ? (
+                                <>
+                                    <div className="flex items-center bg-white/20 px-3 md:px-5 py-1 xl:py-1.5 rounded-full text-xs md:text-base xl:text-xl font-bold text-white border border-white/30 shadow-inner whitespace-nowrap">
+                                        <span className="mr-1 xl:mr-2 text-base md:text-xl xl:text-2xl">{currentIcon}</span> {currentIslandName}
+                                    </div>
+                                    <div className="text-[10px] md:text-xs xl:text-sm font-bold text-yellow-200 mt-1 bg-black/20 px-3 md:px-5 py-0.5 xl:py-1 rounded-full truncate max-w-full">
+                                        {currentMission}
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="flex flex-col items-center lg:hidden">
+                                    <h1 className="font-bold text-base md:text-lg leading-none drop-shadow-md tracking-wide text-yellow-300">Petualangan Pramuka</h1>
+                                    {playerName && <div className="text-[10px] md:text-xs text-amber-100 font-medium mt-1">Salam, {playerName}!</div>}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-2 md:gap-3 xl:gap-5 flex-shrink-0 w-1/4 justify-end">
+                            <button onClick={toggleMusic} className="p-2 xl:p-3 hover:bg-white/20 rounded-full transition active:scale-95 touch-manipulation">
+                               {isMusicPlaying ? <Icons.Volume2 className="w-5 h-5 md:w-6 md:h-6 xl:w-8 xl:h-8"/> : <Icons.VolumeX className="w-5 h-5 md:w-6 md:h-6 xl:w-8 xl:h-8"/>}
+                            </button>
+                            <div className="flex items-center gap-2 bg-black/30 px-3 py-1.5 xl:px-5 xl:py-2 rounded-full text-sm md:text-base xl:text-xl border border-white/20 shadow-inner">
+                              <Icons.Star className="w-4 h-4 md:w-5 md:h-5 xl:w-6 xl:h-6 text-yellow-400 fill-yellow-400 animate-pulse" />
+                              <span className="font-bold text-white">{correctCount}<span className="text-[10px] md:text-xs xl:text-sm text-gray-300 font-normal ml-1">/22</span></span>
+                            </div>
+                            <button onClick={toggleFullscreen} className="p-2 xl:p-3 hover:bg-white/20 rounded-full hidden sm:block transition active:scale-95 touch-manipulation">
+                               {isFullscreen ? <Icons.Minimize className="w-5 h-5 md:w-6 md:h-6 xl:w-8 xl:h-8"/> : <Icons.Maximize className="w-5 h-5 md:w-6 md:h-6 xl:w-8 xl:h-8"/>}
+                            </button>
+                        </div>
+                    </div>
+
+                    {isMenuOpen && (
+                      <div className="absolute top-[70px] md:top-[90px] xl:top-[100px] left-2 w-64 md:w-72 xl:w-80 bg-white/95 backdrop-blur-md shadow-2xl z-50 rounded-xl xl:rounded-2xl border-2 border-amber-200 animate-fade-in overflow-hidden">
+                          <div className="p-4 xl:p-5 space-y-3 xl:space-y-4">
+                            <div className="font-bold text-amber-900 uppercase text-xs xl:text-sm tracking-wider mb-2 border-b border-amber-100 pb-2">Navigasi</div>
+                            <button onClick={() => {setCurrentView('map'); setIsMenuOpen(false)}} className="w-full text-left p-3 rounded-lg flex items-center gap-3 xl:gap-4 hover:bg-amber-50 text-gray-800 font-bold text-sm md:text-base xl:text-lg active:scale-95 transition-transform touch-manipulation">
+                               <Icons.Map className="w-5 h-5 xl:w-6 xl:h-6 text-amber-700" /> Peta Penjelajahan
+                            </button>
+                            <button onClick={() => {setCurrentView('intro'); setIsMenuOpen(false)}} className="w-full text-left p-3 rounded-lg flex items-center gap-3 xl:gap-4 hover:bg-amber-50 text-gray-800 font-bold text-sm md:text-base xl:text-lg active:scale-95 transition-transform touch-manipulation">
+                               <Icons.Home className="w-5 h-5 xl:w-6 xl:h-6 text-amber-700" /> Perkemahan Utama
+                            </button>
+                            <hr className="my-2 border-gray-200" />
+                            <button onClick={() => window.location.reload()} className="w-full text-left p-3 rounded-lg flex items-center gap-3 xl:gap-4 text-red-600 hover:bg-red-50 font-bold text-sm md:text-base xl:text-lg active:scale-95 transition-transform touch-manipulation">
+                              <Icons.RefreshCcw className="w-5 h-5 xl:w-6 xl:h-6" /> Akhiri Penjelajahan
+                            </button>
+                          </div>
+                      </div>
+                    )}
+
+                    <main className="flex-grow flex flex-col min-h-0 overflow-y-auto custom-scrollbar relative">
+                        <div className={`flex flex-col flex-grow w-full mx-auto p-2 md:p-4 xl:p-6 ${currentView === 'intro' || currentView === 'tujuan_panduan' || currentView === 'materi' || currentView === 'map' ? 'justify-center items-center' : ''}`}>
+                            {currentView === 'intro' && <IntroScreen onStart={handleStartGame} />}
+                            {currentView === 'tujuan_panduan' && <TujuanPanduanScreen onNext={() => setCurrentView('materi')} />}
+                            {currentView === 'materi' && <MateriScreen onNext={() => setCurrentView('map')} />}
+                            {currentView === 'map' && <MapScreen unlockedLevel={unlockedLevel} onLevelSelect={startLevel} onFinish={() => setCurrentView('end')} isCompleted={unlockedLevel > 5} />}
+                            {currentView === 'level1' && <Level1Sumatera onComplete={() => handleLevelComplete(1)} onCorrect={incrementCorrect} />}
+                            {currentView === 'level2' && <Level2Jawa onComplete={() => handleLevelComplete(2)} onCorrect={incrementCorrect} />}
+                            {currentView === 'level3' && <Level3Kalimantan onComplete={() => handleLevelComplete(3)} onCorrect={incrementCorrect} />}
+                            {currentView === 'level4' && <Level4Sulawesi onComplete={() => handleLevelComplete(4)} onCorrect={incrementCorrect} />}
+                            {currentView === 'level5' && <Level5Papua onComplete={() => handleLevelComplete(5)} saveRef={(val) => updateUserData('ref5', val)} saveData={updateUserData} />}
+                            {currentView === 'end' && <EndScreen userData={userData} correctCount={correctCount} playerName={playerName} playerSchool={playerSchool} onRestart={() => window.location.reload()} />}
+                        </div>
+                    </main>
+
+                  </div>
+                </div>
+            );
+        }
+
+        function IntroScreen({ onStart }) {
+            const [name, setName] = useState("");
+            const [school, setSchool] = useState("");
+            const [showError, setShowError] = useState(false);
+
+            const handleStartClick = () => {
+                if (name.trim().length > 0 && school.trim().length > 0) {
+                    onStart(name, school);
+                } else {
+                    setShowError(true);
+                    setTimeout(() => setShowError(false), 3000); 
+                }
+            };
+
+            return (
+                <div className="w-full flex flex-col justify-center items-center gap-4 xl:gap-8 animate-fade-in flex-1 min-h-0 py-4 overflow-y-auto">
+                  <div className="flex flex-col md:flex-row items-center justify-center gap-4 xl:gap-8 bg-white/95 p-4 md:p-6 xl:p-8 rounded-3xl backdrop-blur-sm shadow-md border-b-8 border-amber-600 w-full max-w-4xl xl:max-w-6xl">
+                    <img src={LOGO_IMAGE_URL} alt="Logo" className="w-24 md:w-32 xl:w-48 h-auto object-contain animate-bounce-slow drop-shadow-xl rounded-2xl bg-white p-2" />
+                    <div className="text-center md:text-left">
+                        <h2 className="text-3xl md:text-5xl xl:text-6xl font-extrabold text-amber-900 drop-shadow-sm leading-tight">Petualangan Pramuka</h2>
+                        <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-2 mt-3 xl:mt-4">
+                            <p className="text-xs md:text-base xl:text-xl text-emerald-800 font-bold bg-emerald-100 inline-block px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-emerald-400">Kode Kehormatan Pramuka</p>
+                            <p className="text-xs md:text-base xl:text-xl text-amber-800 font-bold bg-amber-100 inline-block px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-amber-300">Siaga & Penggalang</p>
+                        </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col lg:flex-row w-full max-w-4xl xl:max-w-6xl gap-4 xl:gap-8 h-auto flex-shrink-0">
+                    <div className="flex-1 bg-white/95 p-5 xl:p-8 rounded-3xl shadow-lg border-2 border-emerald-600 backdrop-blur-md flex flex-col justify-center">
+                        <p className="text-gray-800 text-sm md:text-base xl:text-2xl leading-relaxed xl:leading-loose font-medium">
+                            "Salam Pramuka! Siapkan perbekalanmu, karena hari ini kita akan menelusuri lorong ilmu kepramukaan.
+                            <br/><br/>
+                            Kamu akan menjalani <span className="text-amber-700 font-bold">Misi Penjelajahan</span> untuk memahami makna Kode Kehormatan Gerakan Pramuka dan TKU. Selesaikan 5 pos tantangan dan buktikan bahwa kamu adalah <span className="text-emerald-700 font-bold">Pandu Sejati!</span> Satyaku Kudarmakan, Darmaku Kubaktikan."
+                        </p>
+                    </div>
+
+                    <div className="flex-1 w-full bg-amber-50/95 p-5 xl:p-8 rounded-3xl border-2 border-amber-400 shadow-lg relative flex flex-col justify-center">
+                        <h3 className="font-black text-amber-900 mb-4 flex items-center justify-center gap-2 text-sm md:text-base xl:text-2xl uppercase tracking-wide border-b border-amber-200 pb-2 xl:pb-4">
+                            <Icons.Tent className="w-5 h-5 xl:w-8 xl:h-8" /> Daftar Hadir Regu
+                        </h3>
+                        <div className="space-y-4">
+                            <div className="relative">
+                                <span className="absolute left-3 xl:left-5 top-3 xl:top-4 w-5 h-5 xl:w-7 xl:h-7 text-amber-700"><Icons.User className="w-5 h-5 xl:w-7 xl:h-7"/></span>
+                                <input type="text" placeholder="Tulis namamu..." className={`w-full pl-10 xl:pl-14 p-3 xl:p-4 text-sm md:text-base xl:text-xl rounded-xl border-2 outline-none font-bold text-gray-800 ${showError && name.length === 0 ? 'border-red-500 bg-red-50' : 'border-amber-300 focus:border-amber-600 focus:bg-white'}`} value={name} onChange={(e) => setName(e.target.value)} />
+                            </div>
+                            <div className="relative">
+                                <span className="absolute left-3 xl:left-5 top-3 xl:top-4 w-5 h-5 xl:w-7 xl:h-7 text-amber-700"><Icons.School className="w-5 h-5 xl:w-7 xl:h-7"/></span>
+                                <input type="text" placeholder="Tulis pangkalan/sekolahmu..." className={`w-full pl-10 xl:pl-14 p-3 xl:p-4 text-sm md:text-base xl:text-xl rounded-xl border-2 outline-none font-bold text-gray-800 ${showError && school.length === 0 ? 'border-red-500 bg-red-50' : 'border-amber-300 focus:border-amber-600 focus:bg-white'}`} value={school} onChange={(e) => setSchool(e.target.value)} />
+                            </div>
+                        </div>
+                        
+                        {showError && (
+                          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90%] bg-red-100 border-2 border-red-600 text-red-900 px-4 py-3 rounded-xl flex flex-col items-center justify-center text-sm xl:text-xl text-center shadow-2xl z-20 font-black">
+                              Isi Nama & Pangkalan dulu ya, Kak!
+                          </div>
+                        )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col-reverse md:flex-row items-center justify-center w-full max-w-4xl xl:max-w-6xl gap-4 mt-2 flex-shrink-0">
+                    <button onClick={handleStartClick} className="bg-gradient-to-b from-amber-600 to-amber-700 text-white font-black hover:from-amber-500 hover:to-amber-600 transition-all border-b-4 border-amber-900 active:border-b-0 py-4 px-8 xl:py-5 xl:px-14 rounded-full shadow-lg active:shadow-none active:translate-y-1 flex items-center gap-3 justify-center text-lg md:text-xl xl:text-3xl w-full md:w-auto uppercase tracking-wider touch-manipulation">
+                        Mulai Penjelajahan <Icons.ArrowRight className="w-6 h-6 xl:w-8 xl:h-8" />
+                    </button>
+                  </div>
+                </div>
+            );
+        }
+
+        function TujuanPanduanScreen({ onNext }) {
+            const [activeModal, setActiveModal] = useState(null);
+            const closeModal = () => setActiveModal(null);
+
+            return (
+                <div className="w-full h-full flex flex-col justify-center items-center animate-fade-in flex-1 min-h-0 relative">
+                    <div className="bg-white/95 p-5 md:p-8 xl:p-12 rounded-3xl shadow-xl border-b-8 border-amber-600 backdrop-blur-md w-full max-w-4xl xl:max-w-5xl flex flex-col max-h-full overflow-y-auto custom-scrollbar">
+                        <div className="text-center border-b-2 border-amber-200 pb-3 xl:pb-6 mb-4 xl:mb-8 flex-shrink-0">
+                            <h2 className="text-3xl md:text-4xl xl:text-6xl font-extrabold text-amber-900 uppercase tracking-wider drop-shadow-sm">Papan Informasi</h2>
+                            <p className="text-sm md:text-base xl:text-2xl text-amber-700 font-bold mt-2">Pilih menu di bawah ini sebelum memulai kegiatan!</p>
+                        </div>
+                        
+                        <div className="flex flex-col gap-4 md:gap-6 xl:gap-8 justify-center items-center flex-1 my-4 flex-shrink-0">
+                            <button onClick={() => setActiveModal('tujuan')} className="w-full max-w-xl bg-gradient-to-r from-emerald-600 to-green-700 hover:from-emerald-500 hover:to-green-600 text-white font-extrabold py-4 md:py-6 px-6 md:px-8 rounded-2xl shadow-[0_6px_0_#064e3b] active:shadow-none active:translate-y-2 transition-all flex items-center justify-between text-lg md:text-2xl xl:text-4xl border border-emerald-500 touch-manipulation">
+                                <span className="flex items-center gap-3 md:gap-4"><Icons.CheckCircle className="w-8 h-8 md:w-10 md:h-10 xl:w-12 xl:h-12" /> Tujuan Pembelajaran</span>
+                                <Icons.ArrowRight className="w-6 h-6 md:w-8 md:h-8 xl:w-10 xl:h-10" />
+                            </button>
+
+                            <button onClick={() => setActiveModal('panduan')} className="w-full max-w-xl bg-gradient-to-r from-amber-600 to-orange-700 hover:from-amber-500 hover:to-orange-600 text-white font-extrabold py-4 md:py-6 px-6 md:px-8 rounded-2xl shadow-[0_6px_0_#78350f] active:shadow-none active:translate-y-2 transition-all flex items-center justify-between text-lg md:text-2xl xl:text-4xl border border-amber-500 touch-manipulation">
+                                <span className="flex items-center gap-3 md:gap-4"><Icons.Map className="w-8 h-8 md:w-10 md:h-10 xl:w-12 xl:h-12" /> Aturan Permainan</span>
+                                <Icons.ArrowRight className="w-6 h-6 md:w-8 md:h-8 xl:w-10 xl:h-10" />
+                            </button>
+                        </div>
+                        
+                        <div className="mt-6 pt-4 xl:mt-8 xl:pt-8 border-t-2 border-gray-200 text-center flex-shrink-0">
+                            <button onClick={onNext} className="bg-gradient-to-b from-blue-600 to-blue-700 text-white font-black hover:from-blue-500 hover:to-blue-600 transition-all border-b-4 border-blue-900 active:border-b-0 py-4 px-10 xl:py-5 xl:px-14 text-lg md:text-xl xl:text-3xl rounded-full shadow-lg active:shadow-none active:translate-y-1 inline-flex items-center gap-3 uppercase tracking-wide touch-manipulation">
+                                Masuk ke Basecamp <Icons.ArrowRight className="w-6 h-6 xl:w-8 xl:h-8" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {activeModal && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in" onClick={closeModal}>
+                            <div className="bg-white w-full max-w-4xl rounded-3xl shadow-2xl border-4 border-amber-500 overflow-hidden flex flex-col max-h-[85vh] animate-pop-in" onClick={e => e.stopPropagation()}>
+                                <div className="flex justify-between items-center p-4 md:p-6 xl:p-8 border-b-2 border-amber-200 bg-amber-50 flex-shrink-0">
+                                    <h3 className="font-extrabold text-xl md:text-2xl xl:text-4xl text-amber-900 flex items-center gap-3 uppercase tracking-wide">
+                                        {activeModal === 'tujuan' && <><Icons.CheckCircle className="w-7 h-7 md:w-9 md:h-9 xl:w-10 xl:h-10 text-emerald-600"/> Tujuan Pembelajaran</>}
+                                        {activeModal === 'panduan' && <><Icons.Map className="w-7 h-7 md:w-9 md:h-9 xl:w-10 xl:h-10 text-amber-600"/> Aturan Penjelajahan</>}
+                                    </h3>
+                                    <button onClick={closeModal} className="p-3 bg-white hover:bg-red-100 hover:text-red-600 rounded-full transition-colors shadow-sm border border-gray-300 touch-manipulation">
+                                        <Icons.X className="w-6 h-6 md:w-8 md:h-8 xl:w-10 xl:h-10" />
+                                    </button>
+                                </div>
+                                
+                                <div className="p-5 md:p-8 xl:p-10 overflow-y-auto custom-scrollbar flex-1 bg-white">
+                                    {activeModal === 'tujuan' && (
+                                        <div className="bg-emerald-50 p-5 xl:p-10 rounded-2xl shadow-sm space-y-4 md:space-y-6 border border-emerald-200">
+                                            <div className="flex gap-4 md:gap-6 items-start bg-white p-5 xl:p-8 rounded-xl border border-emerald-100 shadow-sm">
+                                                <div className="bg-emerald-600 text-white font-black rounded-full w-12 h-12 md:w-14 md:h-14 xl:w-16 xl:h-16 flex items-center justify-center flex-shrink-0 text-xl md:text-2xl xl:text-3xl shadow-md">🎯</div>
+                                                <p className="text-gray-800 font-bold text-base md:text-lg xl:text-3xl leading-relaxed mt-1 md:mt-2">Peserta didik dapat memahami, menganalisis, dan mengevaluasi materi mengenai Kode Kehormatan Gerakan Pramuka.</p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {activeModal === 'panduan' && (
+                                        <div className="bg-amber-50 p-5 xl:p-10 rounded-2xl shadow-sm border border-amber-200 flex flex-col justify-center">
+                                            <ul className="text-base md:text-lg xl:text-3xl text-gray-800 space-y-4 md:space-y-6 font-medium">
+                                                <li className="flex items-start gap-3 md:gap-5 bg-white p-4 md:p-6 rounded-xl border border-amber-100 shadow-sm">
+                                                    <Icons.ArrowRight className="w-6 h-6 md:w-8 md:h-8 xl:w-10 xl:h-10 text-amber-600 flex-shrink-0 mt-1" /> 
+                                                    <span><b>Tahap 1:</b> Isi daftar hadir di buku tamu regu.</span>
+                                                </li>
+                                                <li className="flex items-start gap-3 md:gap-5 bg-white p-4 md:p-6 rounded-xl border border-amber-100 shadow-sm">
+                                                    <Icons.ArrowRight className="w-6 h-6 md:w-8 md:h-8 xl:w-10 xl:h-10 text-amber-600 flex-shrink-0 mt-1" /> 
+                                                    <span><b>Tahap 2:</b> Masuk <b>Basecamp</b> untuk belajar materi dari rekaman visual, teka-teki sandi, dan buku saku pedoman.</span>
+                                                </li>
+                                                <li className="flex items-start gap-3 md:gap-5 bg-white p-4 md:p-6 rounded-xl border border-amber-100 shadow-sm">
+                                                    <Icons.ArrowRight className="w-6 h-6 md:w-8 md:h-8 xl:w-10 xl:h-10 text-amber-600 flex-shrink-0 mt-1" /> 
+                                                    <span><b>Tahap 3:</b> Buka <b>Peta Penjelajahan</b> dan selesaikan tantangan interaktif di tiap pos (Level 1 - 5).</span>
+                                                </li>
+                                                <li className="flex items-start gap-3 md:gap-5 bg-white p-4 md:p-6 rounded-xl border border-amber-100 shadow-sm">
+                                                    <Icons.ArrowRight className="w-6 h-6 md:w-8 md:h-8 xl:w-10 xl:h-10 text-amber-600 flex-shrink-0 mt-1" /> 
+                                                    <span><b>Tahap 4:</b> Kumpulkan Tanda Kecakapan! Tuliskan laporan dan amalkan nilai Dasa Darma di akhir petualangan.</span>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="p-4 md:p-6 xl:p-8 border-t-2 border-amber-200 bg-amber-100 text-center flex-shrink-0">
+                                    <button onClick={closeModal} className="bg-amber-700 hover:bg-amber-800 text-white font-bold py-3 px-10 xl:py-4 xl:px-14 rounded-xl transition-colors shadow-[0_4px_0_#78350f] active:shadow-none active:translate-y-1 text-lg xl:text-3xl uppercase tracking-wide touch-manipulation">Siap Kak!</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function MateriScreen({ onNext }) {
+            const [activeTab, setActiveTab] = useState(null); 
+            
+            const [videoAnswers1, setVideoAnswers1] = useState({});
+            const [videoQuizSubmitted1, setVideoQuizSubmitted1] = useState(false);
+
+            const [bukuAnswers, setBukuAnswers] = useState({});
+            const [bukuQuizSubmitted, setBukuQuizSubmitted] = useState(false);
+
+            const shuffledPodcastOptions = useMemo(() => shuffleArray(PODCAST_OPTIONS), []);
+            const [podcastDropped, setPodcastDropped] = useState({});
+            const [podcastSelected, setPodcastSelected] = useState(null);
+            const [podcastDragOver, setPodcastDragOver] = useState(null);
+            const [podcastSubmitted, setPodcastSubmitted] = useState(false);
+            const [podcastFeedback, setPodcastFeedback] = useState("");
+
+            const handlePodcastDragStart = (e, opt) => { e.dataTransfer.setData("opt", JSON.stringify(opt)); };
+            const handlePodcastDrop = (e, qId) => {
+                e.preventDefault();
+                setPodcastDragOver(null);
+                const optData = e.dataTransfer.getData("opt");
+                if (optData) {
+                    const opt = JSON.parse(optData);
+                    setPodcastDropped(prev => ({ ...prev, [qId]: opt }));
+                    setPodcastFeedback("");
+                }
+            };
+            const handlePodcastRemove = (qId) => {
+                setPodcastDropped(prev => { const newD = {...prev}; delete newD[qId]; return newD; });
+                setPodcastFeedback("");
+            };
+            
+            const handlePodcastOptClick = (opt) => setPodcastSelected(podcastSelected?.id === opt.id ? null : opt);
+            const handlePodcastTargetClick = (qId) => {
+                if (podcastSelected) {
+                    setPodcastDropped(prev => ({...prev, [qId]: podcastSelected}));
+                    setPodcastSelected(null);
+                    setPodcastFeedback("");
+                } else if (podcastDropped[qId]) {
+                    handlePodcastRemove(qId);
+                }
+            };
+
+            const checkPodcastAnswer = () => {
+                if (Object.keys(podcastDropped).length < PODCAST_QUESTIONS.length) {
+                    setPodcastFeedback("Pasangkan semua sandi terlebih dahulu ya, Kak!");
+                    return;
+                }
+                let allCorrect = true;
+                PODCAST_QUESTIONS.forEach(q => {
+                    if (podcastDropped[q.id]?.id !== q.matchId) allCorrect = false;
+                });
+                if (allCorrect) {
+                    playSfx('correct');
+                    setPodcastSubmitted(true);
+                    setPodcastFeedback("");
+                } else {
+                    playSfx('incorrect');
+                    setPodcastFeedback("Masih ada pasangan yang belum tepat. Silakan periksa kembali!");
+                }
+            };
+
+            return (
+                <div className="w-full h-full flex flex-col justify-center items-center animate-fade-in flex-1 min-h-0">
+                  <div className="bg-white/95 p-4 md:p-6 xl:p-10 rounded-3xl shadow-xl border-b-8 border-amber-600 backdrop-blur-md w-full max-w-5xl xl:max-w-7xl flex flex-col flex-1 min-h-0">
+                      
+                      {activeTab === null ? (
+                          <div className="flex flex-col gap-4 md:gap-8 justify-center items-center flex-1 w-full my-auto overflow-y-auto">
+                              <h2 className="text-2xl md:text-4xl xl:text-6xl font-black text-amber-900 uppercase tracking-wider mb-2 xl:mb-6 text-center drop-shadow-sm">Tenda Materi Dasar</h2>
+                              
+                              <button onClick={() => setActiveTab('video')} className="w-full max-w-xl bg-gradient-to-r from-emerald-600 to-green-700 hover:from-emerald-500 hover:to-green-600 text-white font-extrabold py-5 px-6 md:px-8 xl:py-8 rounded-2xl shadow-[0_6px_0_#064e3b] active:shadow-none active:translate-y-2 transition-all flex items-center justify-between text-lg md:text-2xl xl:text-4xl border border-emerald-500 touch-manipulation">
+                                  <span className="flex items-center gap-4 xl:gap-6"><span className="text-3xl md:text-4xl xl:text-5xl">🎥</span> Penjelasan Audio Visual</span>
+                                  <Icons.ArrowRight className="w-6 h-6 md:w-8 md:h-8 xl:w-10 xl:h-10" />
+                              </button>
+
+                              <button onClick={() => setActiveTab('siniar')} className="w-full max-w-xl bg-gradient-to-r from-amber-600 to-orange-700 hover:from-amber-500 hover:to-orange-600 text-white font-extrabold py-5 px-6 md:px-8 xl:py-8 rounded-2xl shadow-[0_6px_0_#78350f] active:shadow-none active:translate-y-2 transition-all flex items-center justify-between text-lg md:text-2xl xl:text-4xl border border-amber-500 touch-manipulation">
+                                  <span className="flex items-center gap-4 xl:gap-6"><span className="text-3xl md:text-4xl xl:text-5xl">🧩</span> Pasangkan Fakta</span>
+                                  <Icons.ArrowRight className="w-6 h-6 md:w-8 md:h-8 xl:w-10 xl:h-10" />
+                              </button>
+
+                              <button onClick={() => setActiveTab('rangkuman')} className="w-full max-w-xl bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-500 hover:to-blue-700 text-white font-extrabold py-5 px-6 md:px-8 xl:py-8 rounded-2xl shadow-[0_6px_0_#1e3a8a] active:shadow-none active:translate-y-2 transition-all flex items-center justify-between text-lg md:text-2xl xl:text-4xl border border-blue-500 touch-manipulation">
+                                  <span className="flex items-center gap-4 xl:gap-6"><span className="text-3xl md:text-4xl xl:text-5xl">📖</span> Buku Saku Pramuka</span>
+                                  <Icons.ArrowRight className="w-6 h-6 md:w-8 md:h-8 xl:w-10 xl:h-10" />
+                              </button>
+                          </div>
+                      ) : (
+                          <div className="flex flex-col flex-1 min-h-0 w-full relative z-10">
+                              <div className="flex justify-between items-center mb-4 border-b-2 border-slate-200 pb-4 flex-shrink-0">
+                                  <button onClick={() => setActiveTab(null)} className="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold py-3 px-5 xl:py-4 xl:px-6 rounded-xl flex items-center gap-2 transition-colors text-sm md:text-base xl:text-2xl shadow-sm border border-slate-300 uppercase tracking-wider touch-manipulation">
+                                      <Icons.ArrowRight className="w-5 h-5 xl:w-8 xl:h-8 rotate-180" /> Kembali
+                                  </button>
+                                  <h3 className="font-extrabold text-amber-900 text-lg md:text-xl xl:text-4xl hidden sm:block uppercase tracking-wider">
+                                      {activeTab === 'video' ? '🎥 Penjelasan Audio Visual' : activeTab === 'siniar' ? '🧩 Pasangkan Fakta' : '📖 Buku Saku Pramuka'}
+                                  </h3>
+                              </div>
+
+                              <div className="flex-1 overflow-y-auto custom-scrollbar p-2 md:p-4 xl:p-6 flex flex-col">
+                                  
+                                  {activeTab === 'video' && (
+                                      <div className="w-full flex flex-col animate-fade-in space-y-6 xl:space-y-10 pb-4">
+                                            <div className="animate-fade-in space-y-6 xl:space-y-10">
+                                                <div className="w-full max-w-5xl mx-auto bg-emerald-50 border-l-4 border-emerald-600 p-4 xl:p-8 rounded-xl shadow-inner flex items-center gap-4">
+                                                    <Icons.BookOpen className="w-8 h-8 xl:w-12 xl:h-12 text-emerald-700 flex-shrink-0" />
+                                                    <p className="text-sm md:text-base xl:text-2xl font-bold text-emerald-900 leading-relaxed">Simak dengan seksama penjelasan mengenai Kode Kehormatan Pramuka pada tayangan berikut.</p>
+                                                </div>
+                                                <div className="w-full max-w-5xl mx-auto aspect-video rounded-2xl overflow-hidden shadow-2xl border-4 border-emerald-400 flex-shrink-0 bg-black">
+                                                    <iframe
+                                                        className="w-full h-full"
+                                                        src="https://www.youtube.com/embed/zwQbEj0eJng?si=f69UYxpZqko4CsKg" 
+                                                        title="YouTube video player"
+                                                        frameBorder="0"
+                                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                                        referrerPolicy="strict-origin-when-cross-origin"
+                                                        allowFullScreen
+                                                    ></iframe>
+                                                </div>
+
+                                                <div className="w-full max-w-5xl mx-auto bg-amber-50 p-5 xl:p-10 rounded-2xl border-2 border-amber-200 shadow-sm flex-shrink-0">
+                                                    <h4 className="font-extrabold text-amber-900 mb-4 xl:mb-6 text-base md:text-lg xl:text-3xl flex items-center gap-3 uppercase tracking-wide border-b border-amber-200 pb-3">✏️ Cek Fakta: Satya dan Darma</h4>
+                                                    <div className="space-y-4 xl:space-y-6 mt-4">
+                                                        {VIDEO1_QUESTIONS.map((q, qIndex) => (
+                                                            <div key={q.id} className="bg-white p-4 xl:p-8 rounded-xl border border-amber-300 shadow-sm">
+                                                                <p className="font-bold text-gray-800 mb-4 text-sm md:text-base xl:text-2xl whitespace-pre-wrap">{q.text}</p>
+                                                                <div className="space-y-2 xl:space-y-4">
+                                                                    {q.options.map((opt, oIdx) => {
+                                                                        const isSelected = videoAnswers1[q.id] === oIdx;
+                                                                        const isCorrect = q.correct === oIdx;
+                                                                        const showResult = videoQuizSubmitted1;
+                                                                        
+                                                                        let btnClass = "w-full text-left p-3 xl:p-5 rounded-xl border-2 text-sm md:text-base xl:text-xl font-bold transition-all flex items-start gap-4 touch-manipulation ";
+                                                                        if (showResult) {
+                                                                            if (isCorrect) btnClass += "bg-emerald-100 border-emerald-600 text-emerald-900";
+                                                                            else if (isSelected && !isCorrect) btnClass += "bg-rose-50 border-rose-500 text-rose-800 line-through";
+                                                                            else btnClass += "bg-slate-50 border-slate-200 text-slate-400 opacity-50";
+                                                                        } else {
+                                                                            btnClass += isSelected ? "bg-amber-600 border-amber-700 text-white shadow-inner scale-[1.01]" : "bg-white border-slate-300 text-slate-700 hover:border-amber-400 hover:bg-amber-50";
+                                                                        }
+
+                                                                        return (
+                                                                            <button 
+                                                                                key={oIdx} 
+                                                                                disabled={videoQuizSubmitted1}
+                                                                                onClick={() => setVideoAnswers1(prev => ({...prev, [q.id]: oIdx}))}
+                                                                                className={btnClass}
+                                                                            >
+                                                                                <span className="flex-1 leading-relaxed">{opt}</span>
+                                                                                {showResult && isCorrect && <Icons.CheckCircle className="w-6 h-6 xl:w-8 xl:h-8 text-emerald-700 flex-shrink-0" />}
+                                                                                {showResult && isSelected && !isCorrect && <Icons.X className="w-6 h-6 xl:w-8 xl:h-8 text-rose-600 flex-shrink-0" />}
+                                                                            </button>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    {!videoQuizSubmitted1 ? (
+                                                        <button 
+                                                            onClick={() => {
+                                                                setVideoQuizSubmitted1(true);
+                                                                const isAllCorrect = VIDEO1_QUESTIONS.every(q => videoAnswers1[q.id] === q.correct);
+                                                                if (isAllCorrect) playSfx('correct'); else playSfx('incorrect');
+                                                            }}
+                                                            disabled={Object.keys(videoAnswers1).length < VIDEO1_QUESTIONS.length}
+                                                            className="mt-8 bg-amber-600 hover:bg-amber-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none text-white font-black py-4 px-6 xl:py-6 xl:px-10 rounded-xl w-full transition-all text-base md:text-lg xl:text-3xl shadow-[0_4px_0_#92400e] active:shadow-none active:translate-y-1 uppercase tracking-wider touch-manipulation"
+                                                        >
+                                                            Kunci Jawaban
+                                                        </button>
+                                                    ) : (
+                                                        <div className="mt-8 text-center bg-white p-5 xl:p-8 rounded-xl border-2 border-amber-300">
+                                                            <p className="font-bold text-slate-800 mb-3 text-base md:text-lg xl:text-2xl">Latihan selesai! Tinjau kembali jawaban yang salah.</p>
+                                                            <button onClick={() => {setVideoAnswers1({}); setVideoQuizSubmitted1(false);}} className="text-amber-700 font-bold underline hover:text-amber-900 text-sm md:text-base xl:text-xl touch-manipulation">
+                                                                <Icons.RefreshCcw className="inline w-5 h-5 xl:w-6 xl:h-6 mr-1 mb-0.5" /> Ulangi
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                      </div>
+                                  )}
+
+                                  {activeTab === 'siniar' && (
+                                      <div className="w-full flex flex-col animate-fade-in space-y-6 xl:space-y-10 pb-4">
+                                          <div className="w-full max-w-5xl mx-auto bg-amber-100 border-l-4 border-amber-600 p-4 xl:p-8 rounded-xl shadow-inner flex items-center gap-4">
+                                              <Icons.BookOpen className="w-8 h-8 xl:w-12 xl:h-12 text-amber-800 flex-shrink-0" />
+                                              <p className="text-sm md:text-base xl:text-2xl font-bold text-amber-900 leading-relaxed">Petualang, pasangkan deskripsi di kotak dengan istilah kode kehormatan yang tepat (kotak putih). <br/><span className="text-amber-700 font-black">Klik sandinya, lalu klik kotak tujuannya!</span></p>
+                                          </div>
+
+                                          <div className="w-full max-w-5xl mx-auto bg-white p-5 md:p-8 xl:p-12 rounded-2xl border-4 border-amber-200 shadow-sm flex-shrink-0">
+                                              <h4 className="font-extrabold text-amber-900 mb-2 xl:mb-4 text-base md:text-xl xl:text-3xl flex items-center gap-3 uppercase tracking-wide border-b border-amber-200 pb-3">🧩 Teka-teki Fakta</h4>
+                                              <p className="text-sm md:text-base xl:text-xl text-gray-700 font-bold mb-6 xl:mb-8 bg-amber-50 inline-block px-4 py-2 rounded-lg border border-amber-300">💡 Cara main: TAP/KLIK sandi berwarna putih, lalu TAP/KLIK kotak tujuan yang tepat!</p>
+
+                                              <div className="bg-amber-50 p-4 xl:p-6 rounded-xl border-2 border-dashed border-amber-400 mb-6 xl:mb-10 flex flex-wrap gap-3 xl:gap-5 justify-center min-h-[100px]">
+                                                  {shuffledPodcastOptions.map(opt => {
+                                                      const isDropped = Object.values(podcastDropped).find(d => d.id === opt.id);
+                                                      if (isDropped) return null;
+                                                      return (
+                                                          <div 
+                                                              key={opt.id}
+                                                              draggable
+                                                              onDragStart={(e) => handlePodcastDragStart(e, opt)}
+                                                              onClick={() => handlePodcastOptClick(opt)}
+                                                              className={`px-5 py-3 xl:px-6 xl:py-4 rounded-xl border-2 font-black text-sm md:text-base xl:text-xl cursor-pointer active:scale-95 shadow-sm transition-all select-none max-w-xs text-center touch-manipulation ${podcastSelected?.id === opt.id ? 'bg-amber-600 border-amber-700 text-white scale-105 ring-4 ring-amber-300' : 'bg-white text-gray-800 border-amber-400 hover:bg-amber-100'}`}
+                                                          >
+                                                              {opt.text}
+                                                          </div>
+                                                      )
+                                                  })}
+                                                  {Object.keys(podcastDropped).length === PODCAST_QUESTIONS.length && <span className="text-amber-800 font-bold my-auto text-sm md:text-base xl:text-xl w-full text-center mt-2">Semua deskripsi telah terisi. Sisa pilihan adalah pengecoh.</span>}
+                                              </div>
+
+                                              <div className="space-y-4 xl:space-y-8">
+                                                  {PODCAST_QUESTIONS.map((q, idx) => (
+                                                      <div key={q.id} className="bg-white p-4 md:p-6 xl:p-8 rounded-xl border-2 border-amber-200 shadow-sm flex flex-col md:flex-row gap-4 xl:gap-8 items-center md:items-stretch">
+                                                          <div className="flex-1 w-full text-center md:text-left">
+                                                              <span className="font-black text-amber-800 text-xs md:text-sm xl:text-lg uppercase tracking-wider block mb-2">Fakta {idx + 1}</span>
+                                                              <p className="font-bold text-gray-800 text-sm md:text-base xl:text-2xl leading-relaxed">{q.text}</p>
+                                                          </div>
+                                                          <div 
+                                                              className={`flex-1 w-full min-h-[80px] xl:min-h-[100px] border-4 border-dashed rounded-xl p-3 xl:p-4 flex items-center justify-center transition-all cursor-pointer relative touch-manipulation ${podcastDragOver === q.id || (podcastSelected && !podcastDropped[q.id]) ? 'bg-amber-100 border-amber-500 scale-[1.02] animate-pulse' : 'bg-gray-50 border-gray-300 hover:border-amber-300'} ${podcastDropped[q.id] ? 'bg-emerald-50 border-emerald-500 border-solid' : ''}`}
+                                                              onDragOver={(e) => { e.preventDefault(); setPodcastDragOver(q.id); }}
+                                                              onDragLeave={() => setPodcastDragOver(null)}
+                                                              onDrop={(e) => handlePodcastDrop(e, q.id)}
+                                                              onClick={() => handlePodcastTargetClick(q.id)}
+                                                          >
+                                                              {podcastDropped[q.id] ? (
+                                                                  <div className="text-center relative w-full group p-2">
+                                                                      <span className="font-black text-emerald-900 text-sm md:text-lg xl:text-2xl">{podcastDropped[q.id].text}</span>
+                                                                      {!podcastSubmitted && (
+                                                                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 md:opacity-100 bg-white/90 md:bg-transparent transition-opacity rounded-lg">
+                                                                              <span className="md:hidden mt-8 text-xs font-bold text-red-500 bg-white px-2 py-1 rounded shadow">Tap untuk Hapus</span>
+                                                                              <Icons.X className="hidden md:block absolute -top-2 -right-2 w-6 h-6 xl:w-8 xl:h-8 text-red-500 drop-shadow-md cursor-pointer hover:scale-110" />
+                                                                          </div>
+                                                                      )}
+                                                                  </div>
+                                                              ) : (
+                                                                  <span className="text-gray-400 font-bold text-sm md:text-base xl:text-xl text-center">KLIK untuk meletakkan jawaban di sini</span>
+                                                              )}
+                                                          </div>
+                                                      </div>
+                                                  ))}
+                                              </div>
+
+                                              {!podcastSubmitted ? (
+                                                  <div className="mt-10 flex flex-col items-center">
+                                                      {podcastFeedback && <p className="text-rose-600 font-bold text-sm md:text-base xl:text-2xl mb-5 bg-rose-50 px-6 py-4 rounded-xl border-2 border-rose-200 text-center w-full">{podcastFeedback}</p>}
+                                                      <button 
+                                                          onClick={checkPodcastAnswer}
+                                                          className="bg-amber-700 hover:bg-amber-800 text-white font-black py-4 px-8 xl:py-6 xl:px-14 rounded-2xl w-full transition-all text-base md:text-xl xl:text-3xl shadow-[0_6px_0_#78350f] active:shadow-none active:translate-y-2 flex items-center justify-center gap-3 uppercase tracking-wider touch-manipulation"
+                                                      >
+                                                          <Icons.CheckCircle className="w-6 h-6 xl:w-8 xl:h-8" /> Cek Pasangan
+                                                      </button>
+                                                  </div>
+                                              ) : (
+                                                  <div className="mt-10 text-center bg-white p-6 xl:p-10 rounded-2xl border-4 border-emerald-500 shadow-sm">
+                                                      <p className="font-bold text-emerald-800 mb-4 text-base md:text-xl xl:text-3xl flex items-center justify-center gap-3">
+                                                          <Icons.CheckCircle className="w-8 h-8 xl:w-10 xl:h-10" /> Latihan selesai! Semua pasangan sudah tepat.
+                                                      </p>
+                                                      <button onClick={() => {setPodcastDropped({}); setPodcastSubmitted(false); setPodcastFeedback("");}} className="text-emerald-700 font-bold underline hover:text-emerald-900 text-sm md:text-lg xl:text-2xl mt-2 inline-flex items-center gap-2 touch-manipulation">
+                                                          <Icons.RefreshCcw className="w-5 h-5 xl:w-6 xl:h-6" /> Ulangi Latihan
+                                                      </button>
+                                                  </div>
+                                              )}
+                                          </div>
+                                      </div>
+                                  )}
+
+                                  {activeTab === 'rangkuman' && (
+                                      <div className="w-full flex flex-col animate-fade-in space-y-6 xl:space-y-10 pb-4">
+                                          <div className="w-full max-w-5xl mx-auto bg-blue-50 border-l-4 border-blue-600 p-4 xl:p-8 rounded-xl shadow-inner flex items-center gap-4">
+                                              <Icons.BookOpen className="w-8 h-8 xl:w-12 xl:h-12 text-blue-800 flex-shrink-0" />
+                                              <p className="text-sm md:text-base xl:text-2xl font-bold text-blue-900 leading-relaxed">Buku Panduan ini berisi catatan lengkap mengenai Tanda Kecakapan Umum (TKU) dan Kode Kehormatan Gerakan Pramuka.</p>
+                                          </div>
+
+                                          <div className="w-full max-w-5xl mx-auto bg-white p-6 md:p-10 xl:p-14 rounded-3xl border-4 border-blue-200 shadow-sm flex-shrink-0 text-gray-800 font-medium leading-relaxed space-y-8 xl:space-y-12">
+                                              
+                                              {/* Bagian Kode Kehormatan */}
+                                              <section>
+                                                  <h2 className="text-2xl md:text-4xl xl:text-5xl font-black text-blue-900 border-b-4 border-blue-200 pb-3 mb-6 xl:mb-8 uppercase tracking-wider">Kode Kehormatan Pramuka</h2>
+                                                  <div className="space-y-6 xl:space-y-10 text-sm md:text-base xl:text-2xl">
+                                                      
+                                                      <div className="bg-blue-50 p-5 rounded-2xl border-l-4 border-blue-400">
+                                                          <h3 className="font-black text-lg md:text-2xl xl:text-3xl text-blue-800 mb-3">1. Pengertian Dasar</h3>
+                                                          <p>Kode Kehormatan Pramuka yang terdiri atas janji yang disebut <strong>satya</strong> dan ketentuan moral yang disebut <strong>Darma</strong> adalah salah satu unsur yang terdapat dalam Metode Kepramukaan.</p>
+                                                          <p className="mt-3">Kode Kehormatan Pramuka ditetapkan dan diterapkan sesuai dengan golongan usia dan perkembangan rohani dan jasmani anggota Gerakan Pramuka.</p>
+                                                      </div>
+
+                                                      <div className="bg-blue-50 p-5 rounded-2xl border-l-4 border-blue-400">
+                                                          <h3 className="font-black text-lg md:text-2xl xl:text-3xl text-blue-800 mb-3">2. Janji (Satya)</h3>
+                                                          <p>Kode Kehormatan Pramuka dalam bentuk janji yang disebut Satya:</p>
+                                                          <ul className="list-[lower-alpha] pl-6 xl:pl-8 space-y-2 mt-3">
+                                                              <li>Diucapkan secara sukarela oleh seorang calon Anggota Gerakan Pramuka setelah memenuhi persyaratan keanggotaan.</li>
+                                                              <li>Dipergunakan sebagai pengikat diri pribadi untuk secara sukarela mengamalkannya.</li>
+                                                              <li>Dipakai sebagai titik tolak memasuki proses pendidikan kepramukaan guna mengembangkan mental, moral, spiritual, emosional, sosial, intelektual dan fisik, baik sebagai individu maupun sebagai anggota masyarakat.</li>
+                                                          </ul>
+                                                      </div>
+
+                                                      <div className="bg-blue-50 p-5 rounded-2xl border-l-4 border-blue-400">
+                                                          <h3 className="font-black text-lg md:text-2xl xl:text-3xl text-blue-800 mb-3">3. Ketentuan Moral (Darma)</h3>
+                                                          <p>Kode Kehormatan Pramuka dalam bentuk ketentuaan moral yang disebut Darma adalah:</p>
+                                                          <ul className="list-[lower-alpha] pl-6 xl:pl-8 space-y-2 mt-3">
+                                                              <li>Alat pendidikan mandiri yang progresif untuk membina dan mengembangkan akhlak mulia.</li>
+                                                              <li>Upaya memberi pengalaman praktis yang mendorong anggota Gerakan Pramuka menemukan, menghayati serta mematuhi sistem nilai yang dimiliki masyarakat dimana ia hidup dan menjadi anggota.</li>
+                                                              <li>Landasan gerak bagi Gerakan Pramuka untuk mencapai tujuan pendidikan kepramukaan.</li>
+                                                              <li>Kode Etik bagi organisasi dan anggota Gerakan Pramuka.</li>
+                                                          </ul>
+                                                      </div>
+                                                      
+                                                      <div className="bg-white border-4 border-amber-200 p-6 rounded-2xl">
+                                                          <h3 className="font-black text-xl md:text-3xl xl:text-4xl text-amber-900 mb-4 text-center border-b-2 border-amber-100 pb-3">Kode Kehormatan Pramuka Siaga</h3>
+                                                          
+                                                          <h4 className="font-bold text-amber-800 text-lg md:text-2xl mt-4">1) Janji (Dwisatya)</h4>
+                                                          <div className="bg-amber-50 p-4 rounded-xl italic font-bold my-3 text-center">
+                                                              "Demi kehormatanku aku berjanji akan bersunguh-sungguh:<br/>
+                                                              - Menjalankan kewajibanku terhadap Tuhan, Negara Kesatuan Republik Indonesia dan menurut aturan keluarga.<br/>
+                                                              - Setiap hari berbuat kebaikan."
+                                                          </div>
+                                                          
+                                                          <h4 className="font-bold text-amber-800 text-lg md:text-2xl mt-6">2) Ketentuan Moral (Dwidarma)</h4>
+                                                          <div className="bg-amber-50 p-4 rounded-xl font-bold my-3">
+                                                              1. Siaga itu patuh pada ayah dan ibunya.<br/>
+                                                              2. Siaga itu berani dan tidak putus asa.
+                                                          </div>
+                                                      </div>
+
+                                                      <div className="bg-white border-4 border-emerald-200 p-6 rounded-2xl">
+                                                          <h3 className="font-black text-xl md:text-3xl xl:text-4xl text-emerald-900 mb-4 text-center border-b-2 border-emerald-100 pb-3">Kode Kehormatan Pramuka Penggalang</h3>
+                                                          
+                                                          <h4 className="font-bold text-emerald-800 text-lg md:text-2xl mt-4">1) Janji (Trisatya)</h4>
+                                                          <div className="bg-emerald-50 p-4 rounded-xl italic font-bold my-3 text-center">
+                                                              "Demi kehormatanku aku berjanji akan bersungguh-sungguh:<br/>
+                                                              - Menjalankan kewajibanku terhadap Tuhan, Negara Kesatuan Republik Indonesia dan mengamalkan pancasila.<br/>
+                                                              - Menolong sesama hidup dan mempersiapkan diri membangun masyarakat.<br/>
+                                                              - Menepati Dasadarma."
+                                                          </div>
+                                                          
+                                                          <h4 className="font-bold text-emerald-800 text-lg md:text-2xl mt-6">2) Ketentuan Moral (Dasadarma)</h4>
+                                                          <div className="bg-emerald-50 p-4 rounded-xl font-bold my-3 leading-relaxed">
+                                                              1. Takwa kepada Tuhan Yang Maha Esa.<br/>
+                                                              2. Cinta alam dan kasih sayang sesama manusia.<br/>
+                                                              3. Patriot yang sopan dan kesatria.<br/>
+                                                              4. Patuh dan suka bermusyawarah.<br/>
+                                                              5. Rela menolong dan tabah.<br/>
+                                                              6. Rajin, trampil dan gembira.<br/>
+                                                              7. Hemat, cermat dan bersahaja.<br/>
+                                                              8. Disiplin, berani dan setia.<br/>
+                                                              9. Bertanggungjawab dan dapat dipercaya.<br/>
+                                                              10. Suci dalam pikiran, perkataan dan perbuatan.
+                                                          </div>
+                                                      </div>
+                                                      
+                                                      <div className="bg-white border-4 border-blue-200 p-6 rounded-2xl">
+                                                          <h3 className="font-black text-xl md:text-3xl xl:text-4xl text-blue-900 mb-4 text-center border-b-2 border-blue-100 pb-3">Kode Kehormatan Penegak & Pandega</h3>
+                                                          <p className="mt-2 mb-3 font-bold text-gray-700">Trisatya dan Dasadarma hampir sama dengan penggalang, perbedaannya hanya pada bait kedua Trisatya:</p>
+                                                          <div className="bg-blue-50 p-4 rounded-xl italic font-bold text-center text-blue-900 border-2 border-blue-300">
+                                                              "- Menolong sesama hidup dan ikut serta membangun masyarakat."
+                                                          </div>
+                                                      </div>
+
+                                                  </div>
+                                              </section>
+
+                                              {/* Latihan Soal Buku Sejarah */}
+                                              <section className="mt-10 pt-10 border-t-8 border-blue-100">
+                                                  <h2 className="text-2xl md:text-4xl xl:text-5xl font-black text-blue-900 pb-3 mb-6 xl:mb-8 uppercase tracking-wider flex items-center gap-3">
+                                                      ✏️ Latihan Pemahaman
+                                                  </h2>
+                                                  <div className="space-y-4 xl:space-y-8 mt-4">
+                                                      {BUKU_QUESTIONS.map((q, qIndex) => (
+                                                          <div key={q.id} className="bg-white p-5 xl:p-8 rounded-2xl border-4 border-blue-100 shadow-sm">
+                                                              <p className="font-bold text-gray-800 mb-4 text-sm md:text-lg xl:text-3xl whitespace-pre-wrap">{q.text}</p>
+                                                              <div className="space-y-3 xl:space-y-4">
+                                                                  {q.options.map((opt, oIdx) => {
+                                                                      const isSelected = bukuAnswers[q.id] === oIdx;
+                                                                      const isCorrect = q.correct === oIdx;
+                                                                      const showResult = bukuQuizSubmitted;
+                                                                      
+                                                                      let btnClass = "w-full text-left p-4 xl:p-6 rounded-xl border-2 text-sm md:text-base xl:text-2xl font-bold transition-all flex items-start gap-4 touch-manipulation ";
+                                                                      if (showResult) {
+                                                                          if (isCorrect) btnClass += "bg-emerald-100 border-emerald-600 text-emerald-900";
+                                                                          else if (isSelected && !isCorrect) btnClass += "bg-rose-50 border-rose-500 text-rose-800 line-through";
+                                                                          else btnClass += "bg-slate-50 border-slate-200 text-slate-400 opacity-50";
+                                                                      } else {
+                                                                          btnClass += isSelected ? "bg-blue-600 border-blue-700 text-white shadow-inner scale-[1.01]" : "bg-white border-slate-300 text-slate-700 hover:border-blue-400 hover:bg-blue-50";
+                                                                      }
+
+                                                                      return (
+                                                                          <button 
+                                                                              key={oIdx} 
+                                                                              disabled={bukuQuizSubmitted}
+                                                                              onClick={() => setBukuAnswers(prev => ({...prev, [q.id]: oIdx}))}
+                                                                              className={btnClass}
+                                                                          >
+                                                                              <span className="flex-1 leading-relaxed">{opt}</span>
+                                                                              {showResult && isCorrect && <Icons.CheckCircle className="w-6 h-6 xl:w-8 xl:h-8 text-emerald-700 flex-shrink-0" />}
+                                                                              {showResult && isSelected && !isCorrect && <Icons.X className="w-6 h-6 xl:w-8 xl:h-8 text-rose-600 flex-shrink-0" />}
+                                                                          </button>
+                                                                      );
+                                                                  })}
+                                                              </div>
+                                                          </div>
+                                                      ))}
+                                                  </div>
+                                                  {!bukuQuizSubmitted ? (
+                                                      <button 
+                                                          onClick={() => {
+                                                              setBukuQuizSubmitted(true);
+                                                              const isAllCorrect = BUKU_QUESTIONS.every(q => bukuAnswers[q.id] === q.correct);
+                                                              if (isAllCorrect) playSfx('correct'); else playSfx('incorrect');
+                                                          }}
+                                                          disabled={Object.keys(bukuAnswers).length < BUKU_QUESTIONS.length}
+                                                          className="mt-8 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:text-slate-500 disabled:shadow-none text-white font-black py-4 px-6 xl:py-6 xl:px-10 rounded-2xl w-full transition-all text-base md:text-xl xl:text-3xl shadow-[0_6px_0_#1e3a8a] active:shadow-none active:translate-y-2 uppercase tracking-wider touch-manipulation"
+                                                      >
+                                                          Cek Jawaban
+                                                      </button>
+                                                  ) : (
+                                                      <div className="mt-8 text-center bg-white p-6 xl:p-8 rounded-2xl border-4 border-blue-200">
+                                                          <p className="font-bold text-slate-800 mb-3 text-base md:text-xl xl:text-3xl">Latihan selesai! Tinjau kembali jawaban yang salah.</p>
+                                                          <button onClick={() => {setBukuAnswers({}); setBukuQuizSubmitted(false);}} className="text-blue-700 font-bold underline hover:text-blue-900 text-sm md:text-lg xl:text-2xl touch-manipulation">
+                                                              <Icons.RefreshCcw className="inline w-5 h-5 xl:w-6 xl:h-6 mr-1 mb-1" /> Ulangi Latihan
+                                                          </button>
+                                                      </div>
+                                                  )}
+                                              </section>
+
+                                          </div>
+                                      </div>
+                                  )}
+
+                              </div>
+                          </div>
+                      )}
+
+                      <div className="mt-4 pt-4 border-t-2 border-gray-200 text-center flex-shrink-0">
+                          <button onClick={onNext} className="bg-gradient-to-b from-blue-600 to-blue-700 text-white font-black hover:from-blue-500 hover:to-blue-600 transition-all border-b-4 border-blue-900 active:border-b-0 py-4 px-8 xl:py-6 xl:px-14 text-base md:text-xl xl:text-3xl rounded-full shadow-lg active:shadow-none active:translate-y-1 inline-flex items-center gap-3 uppercase tracking-wide touch-manipulation w-full md:w-auto justify-center">
+                              Buka Peta Petualangan <Icons.Map className="w-6 h-6 xl:w-8 xl:h-8" />
+                          </button>
+                      </div>
+                  </div>
+                </div>
+            );
+        }
+
+        function MapScreen({ unlockedLevel, onLevelSelect, onFinish, isCompleted }) {
+            return (
+                <div className="flex flex-col flex-1 min-h-[50vh] md:min-h-[600px] w-full max-w-6xl xl:max-w-[90%] 2xl:max-w-screen-2xl bg-white rounded-[2rem] md:rounded-[3rem] overflow-hidden shadow-2xl animate-fade-in relative border-4 md:border-8 border-amber-600 mx-auto my-auto">
+                  <div className="absolute top-4 left-4 md:top-6 md:left-6 z-10 bg-white/95 backdrop-blur px-5 py-3 md:px-8 md:py-5 rounded-2xl shadow-xl border-l-8 border-amber-600">
+                    <h2 className="font-black text-amber-900 text-base md:text-2xl xl:text-4xl tracking-wide uppercase">Peta Penjelajahan</h2>
+                    <p className="text-xs md:text-base xl:text-xl text-gray-600 font-bold mt-1">Pilih pos yang sudah terbuka!</p>
+                  </div>
+
+                  <div className="relative w-full h-full bg-amber-100 overflow-hidden group">
+                    <img src={MAP_IMAGE_URL} alt="Peta" className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-[3s]" />
+                    
+                    {MAP_POSITIONS.map((pos) => {
+                      const isUnlocked = pos.level <= unlockedLevel;
+                      const isCurrent = pos.level === unlockedLevel;
+                      
+                      return (
+                        <button key={pos.level} onClick={() => isUnlocked ? onLevelSelect(pos.level) : null} disabled={!isUnlocked} style={{ top: pos.top, left: pos.left }}
+                          className={`absolute transform -translate-x-1/2 -translate-y-1/2 w-14 h-14 md:w-24 md:h-24 xl:w-28 xl:h-28 2xl:w-36 2xl:h-36 rounded-full flex items-center justify-center border-[3px] md:border-[6px] shadow-2xl transition-all duration-300 z-20 group/btn touch-manipulation
+                            ${isCurrent ? 'scale-125 animate-bounce-slow ring-4 ring-yellow-400 border-white' : 'hover:scale-110 border-white'}
+                            ${isUnlocked ? 'bg-gradient-to-br from-amber-600 to-orange-700 text-white cursor-pointer active:scale-95' : 'bg-slate-300 border-slate-400 text-slate-500 cursor-not-allowed grayscale'}
+                          `}
+                        >
+                          {isUnlocked ? (
+                            <span className="font-extrabold text-2xl md:text-4xl xl:text-5xl 2xl:text-6xl drop-shadow-md">{pos.level}</span>
+                          ) : (
+                            <Icons.Lock className="w-6 h-6 md:w-10 md:h-10 xl:w-12 xl:h-12 opacity-50" />
+                          )}
+                          <div className="absolute -bottom-10 xl:-bottom-16 left-1/2 transform -translate-x-1/2 bg-white px-4 py-2 md:px-5 md:py-3 rounded-full text-[10px] md:text-base xl:text-xl font-bold whitespace-nowrap shadow-xl border-2 border-amber-300 text-amber-900 opacity-0 group-hover/btn:opacity-100 transition-opacity pointer-events-none z-30">
+                            {LEVEL_DATA[pos.level].title}
+                          </div>
+                        </button>
+                      );
+                    })}
+
+                    {isCompleted && (
+                      <button onClick={onFinish} className="absolute bottom-6 right-6 md:bottom-10 md:right-10 bg-gradient-to-r from-emerald-600 to-green-700 text-white font-black py-4 px-6 md:py-5 md:px-10 xl:py-6 xl:px-12 rounded-full shadow-[0_8px_0_#064e3b] flex items-center gap-3 md:gap-4 animate-pulse z-30 transform hover:scale-105 transition text-sm md:text-xl xl:text-3xl active:translate-y-2 active:shadow-none uppercase tracking-wide touch-manipulation">
+                        <Icons.Award className="w-6 h-6 md:w-8 md:h-8 xl:w-10 xl:h-10" /> <span>Klaim Lencana Penjelajah</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+            );
+        }
+
+        function Level1Sumatera({ onComplete, onCorrect }) {
+            const data = LEVEL_DATA[1];
+            const shuffledItems = useMemo(() => shuffleArray(data.items), [data.items]);
+            const shuffledTargets = useMemo(() => shuffleArray(data.targets), [data.targets]);
+            
+            const [droppedItems, setDroppedItems] = useState({}); 
+            const [completed, setCompleted] = useState(false);
+            const [dragOverTarget, setDragOverTarget] = useState(null);
+            const [selectedItem, setSelectedItem] = useState(null);
+            const [feedbackMsg, setFeedbackMsg] = useState("");
+
+            const handleDragStart = (e, item) => { e.dataTransfer.setData("item", JSON.stringify(item)); };
+            const handleDragOver = (e, targetId) => { e.preventDefault(); setDragOverTarget(targetId); };
+            const handleDragLeave = (e) => { e.preventDefault(); setDragOverTarget(null); }
+            const handleDrop = (e, target) => {
+                e.preventDefault(); 
+                setDragOverTarget(null);
+                const itemData = e.dataTransfer.getData("item");
+                if (itemData) {
+                    const item = JSON.parse(itemData);
+                    setDroppedItems(prev => ({ ...prev, [item.id]: target.id }));
+                    setFeedbackMsg("");
+                }
+            };
+
+            const handleRemoveItem = (itemId) => {
+                setDroppedItems(prev => { const newItems = { ...prev }; delete newItems[itemId]; return newItems; });
+                setFeedbackMsg("");
+            };
+
+            const handleItemClick = (item) => { setSelectedItem(selectedItem?.id === item.id ? null : item); };
+            const handleTargetClick = (target) => { 
+                if (selectedItem) {
+                    setDroppedItems(prev => ({ ...prev, [selectedItem.id]: target.id }));
+                    setSelectedItem(null);
+                    setFeedbackMsg("");
+                } 
+            };
+
+            const handleCheckAnswer = () => {
+                let isAllCorrect = true;
+                data.items.forEach(item => { if (droppedItems[item.id] !== item.matchId) isAllCorrect = false; });
+
+                if (isAllCorrect) {
+                    playSfx('correct');
+                    for(let i=0; i<data.items.length; i++) { if (onCorrect) onCorrect(); }
+                    setCompleted(true);
+                } else {
+                    playSfx('incorrect');
+                    setFeedbackMsg("Oops! Ada poin yang diletakkan pada urutan yang salah. Coba periksa lagi Kak!");
+                }
+            };
+
+            const allItemsDropped = Object.keys(droppedItems).length === data.items.length;
+
+            return (
+                <div className="flex flex-col h-full w-full max-w-[1400px] mx-auto flex-1 min-h-0">
+                  {!completed ? (
+                    <div className="flex flex-col flex-1 min-h-0 animate-fade-in">
+                        <div className="bg-white/90 backdrop-blur-sm p-4 md:p-6 xl:p-8 rounded-3xl border-2 border-white shadow-sm mb-4 md:mb-6 flex-shrink-0 flex flex-col md:flex-row gap-4 xl:gap-6 items-center">
+                            <div className="w-14 h-14 md:w-20 md:h-20 xl:w-24 xl:h-24 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0 border-4 border-amber-400">
+                                <Icons.Tent className="w-8 h-8 md:w-12 md:h-12 xl:w-14 xl:h-14 text-amber-700" />
+                            </div>
+                            <div className="text-center md:text-left">
+                                <h3 className="font-black text-amber-900 mb-2 text-base md:text-xl xl:text-3xl uppercase tracking-wider">{data.stimulusTitle}</h3>
+                                <p className="text-gray-800 text-sm md:text-base xl:text-xl font-bold leading-relaxed">{data.stimulusText}</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-emerald-100 p-4 xl:p-6 rounded-2xl border-l-8 border-emerald-600 text-center text-sm md:text-lg xl:text-2xl font-bold text-emerald-900 mb-4 xl:mb-6 shadow-sm flex-shrink-0">
+                            💡 {data.instruction}
+                        </div>
+                        
+                        <div className="flex flex-col md:flex-row gap-4 xl:gap-8 flex-1 min-h-0">
+                          {/* Panel Kiri - Draggable Items */}
+                          <div className="flex-1 md:w-1/2 flex flex-col min-h-0 overflow-y-auto custom-scrollbar pr-2 pb-4">
+                            <div className="flex flex-col gap-2 md:gap-3 p-3 xl:p-5 bg-white/85 backdrop-blur-sm rounded-3xl border-4 border-dashed border-gray-300 min-h-[250px]">
+                              {shuffledItems.map(item => (
+                                !droppedItems[item.id] && (
+                                  <div key={item.id} draggable onDragStart={(e) => handleDragStart(e, item)} onClick={() => handleItemClick(item)}
+                                    className={`p-3 xl:p-4 rounded-xl border-2 md:border-[3px] text-center flex flex-col items-center justify-center cursor-pointer active:scale-95 select-none touch-manipulation shadow-sm transition-all ${selectedItem?.id === item.id ? 'border-amber-500 bg-amber-200 scale-[1.02] ring-2 ring-amber-400' : 'border-amber-300 bg-amber-50 hover:bg-amber-100'}`}
+                                  >
+                                    <span className="font-black text-xs md:text-sm xl:text-lg text-amber-900 pointer-events-none drop-shadow-sm leading-snug">{item.text}</span>
+                                  </div>
+                                )
+                              ))}
+                              {allItemsDropped && <p className="text-center text-gray-500 font-bold text-base md:text-lg xl:text-2xl mt-6">Semua poin telah masuk urutan.</p>}
+                            </div>
+                          </div>
+                          
+                          {/* Panel Kanan - Drop Targets */}
+                          <div className="flex-1 md:w-1/2 flex flex-col min-h-0 overflow-y-auto custom-scrollbar pr-2 pb-4">
+                            <div className="grid grid-cols-1 gap-2 xl:gap-3">
+                              {shuffledTargets.map(target => (
+                                <div key={target.id} onDragOver={(e) => handleDragOver(e, target.id)} onDragLeave={handleDragLeave} onDrop={(e) => handleDrop(e, target)} onClick={() => handleTargetClick(target)}
+                                  className={`w-full p-2 md:p-3 xl:p-4 rounded-xl border-2 md:border-[3px] border-dashed flex flex-row items-center transition-all min-h-[60px] xl:min-h-[80px] cursor-pointer touch-manipulation ${dragOverTarget === target.id || (selectedItem && !droppedItems[selectedItem.id]) ? 'bg-emerald-100 border-emerald-500 scale-[1.01] animate-pulse' : 'bg-white/95 border-emerald-600 shadow-sm'}`}
+                                >
+                                  <span className="font-black text-emerald-900 text-base md:text-xl xl:text-2xl mr-3 xl:mr-4 flex-shrink-0 w-8 md:w-10 text-center">{target.label}</span>
+                                  <div className="flex-1 flex flex-col justify-center">
+                                    {data.items.filter(i => droppedItems[i.id] === target.id).length === 0 && <div className="text-gray-400 font-bold text-xs md:text-sm xl:text-base italic text-left">KLIK/Tarik jawaban ke sini</div>}
+                                    {data.items.filter(i => droppedItems[i.id] === target.id).map(i => (
+                                      <div key={i.id} title={`Klik untuk mengembalikan`} onClick={(e) => { e.stopPropagation(); handleRemoveItem(i.id); }} className="px-3 py-2 bg-emerald-50 text-emerald-900 font-black text-xs md:text-sm xl:text-base rounded-lg border border-emerald-400 shadow-sm animate-pop-in cursor-pointer hover:bg-red-100 hover:border-red-400 hover:text-red-700 transition-colors flex items-center justify-between w-full touch-manipulation">
+                                         <span>{i.text}</span> <Icons.X className="w-4 h-4 ml-2 flex-shrink-0"/>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {allItemsDropped && (
+                            <div className="mt-4 md:mt-6 flex flex-col items-center flex-shrink-0 animate-fade-in pb-4">
+                                {feedbackMsg && <p className="text-red-600 font-bold text-sm md:text-base xl:text-2xl mb-4 bg-red-100 px-6 py-4 rounded-xl border-2 border-red-300 text-center w-full max-w-3xl shadow-sm">{feedbackMsg}</p>}
+                                <button onClick={handleCheckAnswer} className="bg-gradient-to-b from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-black py-4 px-12 xl:py-6 xl:px-16 rounded-full shadow-[0_8px_0_#1e3a8a] active:shadow-none active:translate-y-2 transition-all text-lg md:text-2xl xl:text-3xl flex items-center justify-center gap-3 w-full md:w-auto uppercase tracking-wide touch-manipulation">
+                                    <Icons.CheckCircle className="w-6 h-6 xl:w-10 xl:h-10" /> Cek Tenda
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                  ) : (
+                    <div className="bg-white/95 p-8 md:p-12 xl:p-16 rounded-[3rem] shadow-2xl text-center space-y-6 border-4 border-amber-500 max-w-4xl mx-auto animate-fade-in mt-8 md:mt-12 flex-shrink-0">
+                      <div className="w-20 h-20 md:w-28 md:h-28 xl:w-36 xl:h-36 bg-amber-100 rounded-full flex items-center justify-center mx-auto text-4xl md:text-6xl xl:text-7xl shadow-inner border-4 border-amber-400">🎉</div>
+                      <div>
+                          <h3 className="text-2xl md:text-4xl xl:text-6xl font-black text-amber-900 uppercase tracking-wider mb-4">Mantap, Kak!</h3>
+                          <p className="text-base md:text-xl xl:text-3xl font-bold text-gray-700 leading-relaxed">Fakta sejarah telah tersusun rapi di tenda yang benar.</p>
+                      </div>
+                      <button onClick={onComplete} className="bg-gradient-to-b from-amber-600 to-orange-700 hover:from-amber-500 hover:to-orange-600 text-white font-black w-full py-5 md:py-6 xl:py-8 text-xl md:text-2xl xl:text-4xl rounded-full shadow-[0_8px_0_#78350f] active:shadow-none active:translate-y-2 transition-all mt-6 uppercase tracking-wide touch-manipulation">Lanjut Pos Berikutnya 🚀</button>
+                    </div>
+                  )}
+                </div>
+            );
+        }
+
+        function Level2Jawa({ onComplete, onCorrect }) {
+            const data = LEVEL_DATA[2];
+            const [answers, setAnswers] = useState({});
+            const [step, setStep] = useState('quiz'); 
+            const [currentQIndex, setCurrentQIndex] = useState(0);
+            const [scoreDetails, setScoreDetails] = useState(0);
+
+            const flatQuestions = React.useMemo(() => {
+                const arr = [];
+                data.parts.forEach(part => {
+                    part.questions.forEach(q => {
+                        const originalOptions = [...q.options];
+                        const shuffledOptions = shuffleArray(originalOptions);
+                        
+                        let newCorrect;
+                        if (q.type === 'single') {
+                            newCorrect = shuffledOptions.indexOf(originalOptions[q.correct]);
+                        } else {
+                            newCorrect = q.correct.map(idx => shuffledOptions.indexOf(originalOptions[idx]));
+                        }
+
+                        arr.push({
+                            ...q,
+                            options: shuffledOptions,
+                            correct: newCorrect,
+                            stimulusTitle: part.stimulusTitle,
+                            stimulusText: part.stimulusText
+                        });
+                    });
+                });
+                return arr;
+            }, [data]);
+
+            const currentQ = flatQuestions[currentQIndex];
+
+            const handleSingle = (qId, optIdx) => { setAnswers(prev => ({ ...prev, [qId]: optIdx })); };
+            const handleMultiple = (qId, optIdx) => {
+                setAnswers(prev => {
+                    const current = prev[qId] || [];
+                    if (current.includes(optIdx)) return { ...prev, [qId]: current.filter(x => x !== optIdx) };
+                    if (current.length < 2) return { ...prev, [qId]: [...current, optIdx] };
+                    return prev; 
+                });
+            };
+
+            const isCurrentAnswered = currentQ.type === 'single' ? answers[currentQ.id] !== undefined : (answers[currentQ.id] && answers[currentQ.id].length > 0);
+
+            const handleNext = () => { if (currentQIndex < flatQuestions.length - 1) setCurrentQIndex(prev => prev + 1); };
+            const handlePrev = () => { if (currentQIndex > 0) setCurrentQIndex(prev => prev - 1); };
+
+            const handleSubmit = () => {
+                let correctAns = 0;
+                flatQuestions.forEach(q => {
+                    const userAns = answers[q.id];
+                    if (q.type === 'single') {
+                        if (userAns === q.correct) correctAns++;
+                    } else if (q.type === 'multiple') {
+                        if (Array.isArray(userAns) && userAns.length === q.correct.length && userAns.every(val => q.correct.includes(val))) correctAns++;
+                    }
+                });
+
+                if (correctAns === flatQuestions.length) playSfx('correct');
+                else playSfx('incorrect');
+
+                setScoreDetails(correctAns);
+                setStep('feedback');
+            };
+
+            const handleRetry = () => { setAnswers({}); setCurrentQIndex(0); setScoreDetails(0); setStep('quiz'); };
+            const handleProceed = () => { for(let i = 0; i < scoreDetails; i++) { if (onCorrect) onCorrect(); } onComplete(); };
+
+            if (step === 'feedback') {
+                return (
+                    <div className="flex flex-col h-full w-full max-w-5xl mx-auto pb-4 animate-fade-in justify-center">
+                        <div className="bg-white/95 p-6 md:p-10 xl:p-16 rounded-[3rem] shadow-2xl border-4 border-amber-500 text-center mt-4 flex-shrink-0 max-h-full flex flex-col">
+                            <Icons.Award className="w-16 h-16 md:w-24 md:h-24 xl:w-32 xl:h-32 text-yellow-500 mx-auto animate-bounce-slow mb-4 flex-shrink-0" />
+                            <h3 className="text-2xl md:text-4xl xl:text-6xl font-black text-gray-800 mb-3 xl:mb-6 uppercase tracking-wider flex-shrink-0">Hasil Uji Pemahaman</h3>
+                            <p className="text-lg md:text-2xl xl:text-4xl font-bold text-gray-600 mb-6 xl:mb-10 flex-shrink-0">Jawaban benar: <span className="text-emerald-600 text-4xl md:text-5xl xl:text-7xl font-black mx-3">{scoreDetails}</span> dari {flatQuestions.length}</p>
+                            
+                            <div className="space-y-4 xl:space-y-6 text-left overflow-y-auto custom-scrollbar pr-3 mb-8 flex-1 min-h-0">
+                                {flatQuestions.map((q) => {
+                                    const userAns = answers[q.id];
+                                    let isCorrect = false;
+                                    if (q.type === 'single') isCorrect = userAns === q.correct;
+                                    else isCorrect = Array.isArray(userAns) && userAns.length === q.correct.length && userAns.every(val => q.correct.includes(val));
+
+                                    return (
+                                        <div key={q.id} className={`p-4 md:p-6 xl:p-8 rounded-2xl border-2 ${isCorrect ? 'border-emerald-400 bg-emerald-50' : 'border-red-400 bg-red-50'}`}>
+                                            <div className="flex gap-3 xl:gap-5 items-start mb-3 xl:mb-5">
+                                                {isCorrect ? <Icons.CheckCircle className="w-6 h-6 md:w-8 md:h-8 xl:w-10 xl:h-10 text-emerald-600 flex-shrink-0 mt-1" /> : <Icons.X className="w-6 h-6 md:w-8 md:h-8 xl:w-10 xl:h-10 text-red-600 flex-shrink-0 mt-1" />}
+                                                <p className="font-bold text-gray-800 text-sm md:text-lg xl:text-2xl leading-relaxed">{q.text}</p>
+                                            </div>
+                                            <div className="ml-9 md:ml-13 xl:ml-16 space-y-2 xl:space-y-3 text-sm md:text-base xl:text-xl">
+                                                {q.options.map((opt, oIdx) => {
+                                                    const isSelected = q.type === 'single' ? userAns === oIdx : (userAns || []).includes(oIdx);
+                                                    const isCorrectOpt = q.type === 'single' ? q.correct === oIdx : q.correct.includes(oIdx);
+                                                    if (!isSelected && !isCorrectOpt) return null; 
+                                                    
+                                                    let optClass = "text-gray-600 font-medium"; let icon = "•";
+                                                    if (isCorrectOpt) { optClass = "text-emerald-700 font-black"; icon = "✓"; } 
+                                                    else if (isSelected && !isCorrectOpt) { optClass = "text-red-700 line-through font-bold"; icon = "✗"; }
+                                                    
+                                                    return (
+                                                        <div key={oIdx} className={`flex gap-3 ${optClass}`}>
+                                                            <span className="w-5 font-bold">{icon}</span>
+                                                            <span className="leading-relaxed">{opt} {isSelected && !isCorrectOpt ? '(Jawabanmu)' : ''} {isCorrectOpt ? '(Jawaban Benar)' : ''}</span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row gap-4 xl:gap-6 justify-center flex-shrink-0 mt-2">
+                                {scoreDetails < flatQuestions.length && (
+                                    <button onClick={handleRetry} className="bg-yellow-500 hover:bg-yellow-600 text-white font-black py-4 px-8 xl:py-6 xl:px-12 rounded-full shadow-[0_6px_0_#a16207] active:shadow-none active:translate-y-2 transition-all text-base md:text-xl xl:text-3xl flex items-center justify-center gap-3 touch-manipulation">
+                                        <Icons.RefreshCcw className="w-6 h-6 xl:w-8 xl:h-8" /> Coba Lagi
+                                    </button>
+                                )}
+                                <button onClick={handleProceed} className="bg-gradient-to-b from-amber-600 to-orange-700 hover:from-amber-500 hover:to-orange-600 text-white font-black py-4 px-8 xl:py-6 xl:px-12 rounded-full shadow-[0_6px_0_#78350f] active:shadow-none active:translate-y-2 transition-all text-base md:text-xl xl:text-3xl flex items-center justify-center gap-3 w-full sm:w-auto uppercase touch-manipulation">
+                                    Lanjut Misi 🚀
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="flex flex-col h-full w-full max-w-[1400px] mx-auto flex-1 min-h-0">
+                   <div className="bg-emerald-100 text-emerald-900 p-3 md:p-4 xl:p-6 rounded-2xl text-center font-bold text-sm md:text-lg xl:text-2xl border-l-8 border-emerald-600 shadow-sm flex items-center justify-center gap-4 mb-4 xl:mb-6 flex-shrink-0">
+                     <Icons.BookOpen className="w-6 h-6 xl:w-10 xl:h-10 flex-shrink-0" /> Baca materi kode kehormatan di area teks, lalu selesaikan kuisnya.
+                   </div>
+
+                   <div className="bg-white/95 backdrop-blur-lg rounded-[2rem] shadow-xl border-4 border-amber-600 overflow-hidden flex flex-col md:flex-row flex-1 min-h-0">
+                       <div className="md:w-1/2 bg-amber-50/90 p-5 md:p-6 xl:p-10 border-b md:border-b-0 md:border-r-4 border-amber-300 flex flex-col min-h-[30vh] md:min-h-0 overflow-y-auto custom-scrollbar">
+                           <h3 className="font-black text-amber-900 mb-4 xl:mb-8 flex items-center gap-3 text-lg md:text-xl xl:text-4xl flex-shrink-0 drop-shadow-sm uppercase tracking-wide">
+                               {currentQ.stimulusTitle}
+                           </h3>
+                           <div className="text-gray-900 text-base md:text-lg xl:text-3xl whitespace-pre-wrap leading-relaxed xl:leading-loose font-bold bg-white/95 p-5 md:p-6 xl:p-10 rounded-2xl border-2 border-amber-200 shadow-sm flex-1">
+                               {currentQ.stimulusText}
+                           </div>
+                       </div>
+                       
+                       <div className="md:w-1/2 p-5 md:p-6 xl:p-10 flex flex-col min-h-[40vh] md:min-h-0 bg-white/50 backdrop-blur-sm">
+                           <div className="text-sm md:text-base xl:text-xl font-black text-amber-800 uppercase tracking-wider mb-2 xl:mb-4 flex-shrink-0 bg-amber-200 inline-block px-4 py-1.5 rounded-lg w-max border border-amber-400">Tantangan {currentQIndex + 1} / {flatQuestions.length}</div>
+                           <p className="font-black text-gray-900 text-lg md:text-xl xl:text-3xl leading-relaxed mb-5 xl:mb-8 flex-shrink-0 drop-shadow-sm mt-2">{currentQ.text}</p>
+                           
+                           <div className="space-y-4 xl:space-y-6 flex-grow overflow-y-auto custom-scrollbar pr-2 pb-2">
+                               {currentQ.options.map((opt, oIdx) => {
+                                   const isSelected = currentQ.type === 'single' ? answers[currentQ.id] === oIdx : (answers[currentQ.id] || []).includes(oIdx);
+                                   let btnClass = `w-full text-left px-5 py-4 md:px-6 md:py-5 xl:py-6 rounded-2xl border-4 text-base md:text-lg xl:text-3xl font-bold transition-all flex items-start gap-4 xl:gap-6 touch-manipulation ${isSelected ? 'border-amber-600 bg-amber-100 shadow-md text-amber-900 scale-[1.01]' : 'border-gray-300 bg-white hover:border-amber-400 hover:bg-amber-50 text-gray-800 shadow-sm'}`;
+                                   const shapeClass = currentQ.type === 'single' ? 'rounded-full' : 'rounded-md';
+
+                                   return (
+                                       <button key={oIdx} onClick={() => currentQ.type === 'single' ? handleSingle(currentQ.id, oIdx) : handleMultiple(currentQ.id, oIdx)} className={btnClass}>
+                                           <div className={`mt-0.5 md:mt-1 flex-shrink-0 w-6 h-6 md:w-8 md:h-8 xl:w-12 xl:h-12 border-4 ${shapeClass} flex items-center justify-center transition-colors ${isSelected ? 'border-amber-700 bg-amber-600' : 'border-gray-300 bg-white'}`}>
+                                               {isSelected && (currentQ.type === 'single' ? <div className="w-2.5 h-2.5 md:w-3 md:h-3 xl:w-5 xl:h-5 bg-white rounded-full" /> : <Icons.CheckCircle className="w-5 h-5 md:w-6 md:h-6 xl:w-10 xl:h-10 text-white" />)}
+                                           </div>
+                                           <span className="flex-1 leading-snug">{opt}</span>
+                                       </button>
+                                   );
+                               })}
+                           </div>
+
+                           <div className="flex justify-between items-center gap-3 mt-4 xl:mt-8 pt-4 xl:pt-6 border-t-4 border-gray-200 flex-shrink-0">
+                               <button onClick={handlePrev} disabled={currentQIndex === 0} className={`py-4 px-5 xl:py-5 xl:px-8 rounded-2xl font-black flex items-center gap-2 transition-all text-base md:text-lg xl:text-2xl touch-manipulation ${currentQIndex === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed border-2 border-transparent' : 'bg-white text-gray-800 border-4 border-gray-300 hover:bg-gray-100 shadow-sm active:scale-95'}`}>
+                                   <Icons.ArrowRight className="w-6 h-6 xl:w-8 xl:h-8 rotate-180" /> <span className="hidden sm:inline">Sebelumnya</span>
+                               </button>
+                               
+                               {currentQIndex < flatQuestions.length - 1 ? (
+                                   <button onClick={handleNext} disabled={!isCurrentAnswered} className={`py-4 px-8 xl:py-5 xl:px-12 rounded-2xl font-black flex items-center gap-2 transition-all text-base md:text-lg xl:text-2xl touch-manipulation ${!isCurrentAnswered ? 'bg-gray-200 text-gray-400 cursor-not-allowed border-2 border-transparent' : 'bg-gradient-to-b from-amber-600 to-orange-700 hover:from-amber-500 hover:to-orange-600 text-white shadow-[0_6px_0_#78350f] active:shadow-none active:translate-y-2 border-none'}`}>
+                                       <span className="hidden sm:inline">Selanjutnya</span> <Icons.ArrowRight className="w-6 h-6 xl:w-8 xl:h-8" />
+                                   </button>
+                               ) : (
+                                   <button onClick={handleSubmit} disabled={!isCurrentAnswered} className={`py-4 px-8 xl:py-5 xl:px-12 rounded-2xl font-black flex items-center gap-2 transition-all text-base md:text-lg xl:text-2xl touch-manipulation uppercase tracking-wide ${!isCurrentAnswered ? 'bg-gray-200 text-gray-400 cursor-not-allowed border-2 border-transparent' : 'bg-gradient-to-b from-emerald-600 to-green-700 hover:from-emerald-500 hover:to-green-600 text-white shadow-[0_6px_0_#064e3b] active:shadow-none active:translate-y-2 border-none'}`}>
+                                       <Icons.CheckCircle className="w-6 h-6 xl:w-8 xl:h-8" /> Selesai
+                                   </button>
+                               )}
+                           </div>
+                       </div>
+                   </div>
+                </div>
+            );
+        }
+
+        function Level3Kalimantan({ onComplete, onCorrect }) {
+            const data = LEVEL_DATA[3];
+            const [answers, setAnswers] = useState({});
+            const [step, setStep] = useState('quiz'); 
+            const [currentQIndex, setCurrentQIndex] = useState(0);
+            const [scoreDetails, setScoreDetails] = useState(0);
+
+            const shuffledQuestions = React.useMemo(() => {
+                return data.questions.map(q => {
+                    const originalReasons = [...q.reasonOptions];
+                    const shuffledReasons = shuffleArray(originalReasons);
+                    const correctReasonText = originalReasons[q.correctReasonIndex];
+                    const newCorrectReasonIndex = shuffledReasons.indexOf(correctReasonText);
+
+                    return {
+                        ...q,
+                        reasonOptions: shuffledReasons,
+                        correctReasonIndex: newCorrectReasonIndex
+                    };
+                });
+            }, [data.questions]);
+
+            const currentQ = shuffledQuestions[currentQIndex];
+
+            const handleStatement = (qId, statement) => { setAnswers(prev => ({ ...prev, [qId]: { ...prev[qId], statement } })); };
+            const handleReason = (qId, reasonIdxStr) => {
+                const reasonIdx = parseInt(reasonIdxStr);
+                setAnswers(prev => ({ ...prev, [qId]: { ...prev[qId], reasonIdx } }));
+            };
+
+            const isCurrentAnswered = answers[currentQ.id]?.statement !== undefined && answers[currentQ.id]?.reasonIdx !== undefined && !isNaN(answers[currentQ.id]?.reasonIdx);
+
+            const handleNext = () => { if (currentQIndex < shuffledQuestions.length - 1) setCurrentQIndex(prev => prev + 1); };
+            const handlePrev = () => { if (currentQIndex > 0) setCurrentQIndex(prev => prev - 1); };
+
+            const handleSubmit = () => {
+                let correctAns = 0;
+                shuffledQuestions.forEach(q => {
+                    const userAns = answers[q.id];
+                    if (userAns && userAns.statement === q.correctStatement && userAns.reasonIdx === q.correctReasonIndex) correctAns++;
+                });
+
+                if (correctAns === shuffledQuestions.length) playSfx('correct');
+                else playSfx('incorrect');
+
+                setScoreDetails(correctAns);
+                setStep('feedback');
+            };
+
+            const handleRetry = () => { setAnswers({}); setCurrentQIndex(0); setScoreDetails(0); setStep('quiz'); };
+            const handleProceed = () => { for(let i = 0; i < scoreDetails; i++) { if (onCorrect) onCorrect(); } onComplete(); };
+
+            if (step === 'feedback') {
+                return (
+                    <div className="flex flex-col h-full w-full max-w-5xl mx-auto pb-4 animate-fade-in justify-center">
+                        <div className="bg-white/95 p-8 md:p-10 xl:p-16 rounded-[3rem] shadow-2xl border-4 border-amber-600 text-center mt-4 max-h-full flex flex-col">
+                            <Icons.Award className="w-20 h-20 md:w-28 md:h-28 xl:w-36 xl:h-36 text-yellow-500 mx-auto animate-bounce-slow mb-4 flex-shrink-0" />
+                            <h3 className="text-3xl md:text-4xl xl:text-6xl font-black text-gray-800 mb-3 xl:mb-6 uppercase tracking-wider flex-shrink-0">Laporan Ujian Sandi</h3>
+                            <p className="text-xl md:text-2xl xl:text-4xl font-bold text-gray-600 mb-8 xl:mb-12 flex-shrink-0">Berhasil mengevaluasi <span className="text-amber-700 text-4xl md:text-5xl xl:text-7xl mx-3 font-black">{scoreDetails}</span> dari {shuffledQuestions.length} sandi dengan tepat!</p>
+                            
+                            <div className="space-y-4 xl:space-y-6 text-left overflow-y-auto custom-scrollbar pr-3 mb-8 xl:mb-10 flex-1 min-h-0">
+                                {shuffledQuestions.map((q) => {
+                                    const userAns = answers[q.id];
+                                    const isCorrect = userAns?.statement === q.correctStatement && userAns?.reasonIdx === q.correctReasonIndex;
+
+                                    return (
+                                        <div key={q.id} className={`p-5 xl:p-8 rounded-2xl border-2 ${isCorrect ? 'border-emerald-400 bg-emerald-50' : 'border-red-400 bg-red-50'}`}>
+                                            <div className="flex gap-3 xl:gap-5 items-start mb-3 xl:mb-5">
+                                                {isCorrect ? <Icons.CheckCircle className="w-6 h-6 md:w-8 md:h-8 xl:w-10 xl:h-10 text-emerald-600 flex-shrink-0 mt-1" /> : <Icons.X className="w-6 h-6 md:w-8 md:h-8 xl:w-10 xl:h-10 text-red-600 flex-shrink-0 mt-1" />}
+                                                <p className="font-bold text-gray-800 text-sm md:text-lg xl:text-2xl leading-relaxed">{q.text}</p>
+                                            </div>
+                                            <div className="ml-9 md:ml-13 xl:ml-15 space-y-2 xl:space-y-3 text-sm md:text-base xl:text-xl">
+                                                <p className="text-gray-600 font-medium">
+                                                    Pernyataan: <span className={userAns?.statement === q.correctStatement ? 'text-emerald-700 font-black' : 'text-red-700 font-black line-through'}>{userAns?.statement || '-'}</span>
+                                                    {!isCorrect && userAns?.statement !== q.correctStatement && <span className="text-emerald-700 font-black ml-2">({q.correctStatement})</span>}
+                                                </p>
+                                                <p className="text-gray-600 mt-2 font-medium">
+                                                    Alasan: <span className={userAns?.reasonIdx === q.correctReasonIndex ? 'text-emerald-700 font-black' : 'text-red-700 font-black line-through leading-relaxed'}>{userAns?.reasonIdx !== undefined && !isNaN(userAns?.reasonIdx) ? q.reasonOptions[userAns.reasonIdx] : '-'}</span>
+                                                    {!isCorrect && userAns?.reasonIdx !== q.correctReasonIndex && <span className="text-emerald-700 font-black ml-2 block mt-2 leading-relaxed">✓ {q.reasonOptions[q.correctReasonIndex]}</span>}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row gap-5 justify-center flex-shrink-0 mt-2">
+                                {scoreDetails < shuffledQuestions.length && (
+                                    <button onClick={handleRetry} className="bg-yellow-500 hover:bg-yellow-600 text-white font-black py-4 px-10 xl:py-6 xl:px-14 rounded-full shadow-[0_6px_0_#a16207] active:shadow-none active:translate-y-2 transition-all text-lg md:text-xl xl:text-3xl flex items-center justify-center gap-3 touch-manipulation">
+                                        <Icons.RefreshCcw className="w-6 h-6 xl:w-8 xl:h-8" /> Coba Lagi
+                                    </button>
+                                )}
+                                <button onClick={handleProceed} className="bg-gradient-to-b from-amber-600 to-orange-700 hover:from-amber-500 hover:to-orange-600 text-white font-black py-4 px-10 xl:py-6 xl:px-14 rounded-full shadow-[0_6px_0_#78350f] active:shadow-none active:translate-y-2 transition-all text-lg md:text-xl xl:text-3xl flex items-center justify-center gap-3 uppercase tracking-wide touch-manipulation w-full sm:w-auto">
+                                    Lanjut Misi 🚀
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="flex flex-col h-full w-full max-w-[1400px] mx-auto flex-1 min-h-0">
+                   <div className="bg-amber-100 text-amber-900 p-3 md:p-4 xl:p-6 rounded-2xl text-center font-bold text-sm md:text-lg xl:text-2xl border-l-8 border-amber-600 shadow-sm flex items-center justify-center gap-4 mb-4 xl:mb-6 flex-shrink-0">
+                     <Icons.Tent className="w-6 h-6 xl:w-10 xl:h-10 flex-shrink-0" /> Baca pernyataan sandi, lalu tentukan Benar/Salah dan pilih alasan yang tepat.
+                   </div>
+
+                   <div className="bg-white/90 backdrop-blur-lg rounded-[2rem] shadow-xl border-4 border-amber-600 overflow-hidden flex flex-col md:flex-row flex-1 min-h-0">
+                       <div className="md:w-1/2 bg-amber-50/90 p-5 md:p-6 xl:p-10 border-b md:border-b-0 md:border-r-4 border-amber-300 flex flex-col min-h-[30vh] md:min-h-0 overflow-y-auto custom-scrollbar">
+                           <h3 className="font-black text-amber-900 mb-4 xl:mb-8 flex items-center gap-3 text-lg md:text-xl xl:text-4xl flex-shrink-0 drop-shadow-sm uppercase tracking-wide">
+                               {data.stimulusTitle}
+                           </h3>
+                           <div className="text-gray-900 text-base md:text-lg xl:text-3xl whitespace-pre-wrap leading-relaxed xl:leading-loose font-bold bg-white/95 p-5 md:p-6 xl:p-10 rounded-2xl border-2 border-amber-200 shadow-sm flex-1">
+                               {data.stimulusText}
+                           </div>
+                       </div>
+                       
+                       <div className="md:w-1/2 p-5 md:p-6 xl:p-10 flex flex-col min-h-[40vh] md:min-h-0 bg-white/50 backdrop-blur-sm">
+                           <div className="text-sm md:text-base xl:text-xl font-black text-amber-900 uppercase tracking-wider mb-2 xl:mb-4 flex-shrink-0 bg-amber-200 inline-block px-4 py-1.5 rounded-lg w-max border border-amber-400">Pernyataan {currentQIndex + 1} dari {shuffledQuestions.length}</div>
+                           <p className="font-black text-gray-900 text-lg md:text-xl xl:text-3xl leading-relaxed mb-5 xl:mb-8 flex-shrink-0 drop-shadow-sm mt-2">{currentQ.text}</p>
+                           
+                           <div className="space-y-6 xl:space-y-10 flex-grow overflow-y-auto custom-scrollbar pr-2 pb-2">
+                               <div className="space-y-3 xl:space-y-5">
+                                   <label className="block text-base md:text-lg xl:text-2xl font-bold text-gray-900 drop-shadow-sm uppercase tracking-wide">Pernyataan tersebut:</label>
+                                   <div className="flex gap-4 xl:gap-6">
+                                       <button onClick={() => handleStatement(currentQ.id, 'Benar')} className={`flex-1 py-5 xl:py-8 rounded-2xl border-4 font-black text-xl xl:text-4xl transition-all shadow-sm uppercase tracking-wider touch-manipulation ${answers[currentQ.id]?.statement === 'Benar' ? 'bg-emerald-600 border-emerald-700 text-white scale-[1.02]' : 'bg-white border-gray-300 text-gray-700 hover:border-emerald-500 hover:bg-emerald-50'}`}>
+                                           Benar
+                                       </button>
+                                       <button onClick={() => handleStatement(currentQ.id, 'Salah')} className={`flex-1 py-5 xl:py-8 rounded-2xl border-4 font-black text-xl xl:text-4xl transition-all shadow-sm uppercase tracking-wider touch-manipulation ${answers[currentQ.id]?.statement === 'Salah' ? 'bg-red-600 border-red-700 text-white scale-[1.02]' : 'bg-white border-gray-300 text-gray-700 hover:border-red-500 hover:bg-red-50'}`}>
+                                           Salah
+                                       </button>
+                                   </div>
+                               </div>
+
+                               <div className="space-y-3 xl:space-y-5 pt-5 xl:pt-8 border-t-4 border-amber-200 mt-6">
+                                   <label className="block text-base md:text-lg xl:text-2xl font-bold text-gray-900 drop-shadow-sm uppercase tracking-wide">Alasan Kode Kehormatan:</label>
+                                   <div className="relative">
+                                       <select 
+                                            value={answers[currentQ.id]?.reasonIdx !== undefined ? answers[currentQ.id].reasonIdx : ""} 
+                                            onChange={(e) => handleReason(currentQ.id, e.target.value)} 
+                                            className="w-full p-5 md:p-6 xl:p-8 rounded-2xl border-4 border-gray-300 bg-white text-base md:text-lg xl:text-3xl font-bold text-gray-800 outline-none focus:border-amber-600 transition-all appearance-none cursor-pointer shadow-sm hover:bg-amber-50"
+                                       >
+                                           <option value="" disabled>-- Pilih Alasan yang Sesuai --</option>
+                                           {currentQ.reasonOptions.map((opt, idx) => (
+                                               <option key={idx} value={idx}>{opt}</option>
+                                           ))}
+                                       </select>
+                                       <div className="absolute right-5 xl:right-8 top-1/2 transform -translate-y-1/2 pointer-events-none bg-amber-200 p-2 xl:p-3 rounded-full">
+                                           <Icons.ArrowRight className="w-5 h-5 xl:w-8 xl:h-8 text-amber-800 rotate-90" />
+                                       </div>
+                                   </div>
+                               </div>
+                           </div>
+
+                           <div className="flex justify-between items-center gap-3 mt-4 xl:mt-8 pt-4 xl:pt-6 border-t-4 border-gray-300 flex-shrink-0">
+                               <button onClick={handlePrev} disabled={currentQIndex === 0} className={`py-4 px-5 xl:py-5 xl:px-8 rounded-2xl font-black flex items-center gap-2 transition-all text-base md:text-lg xl:text-2xl touch-manipulation ${currentQIndex === 0 ? 'bg-gray-200 text-gray-400 cursor-not-allowed border-2 border-transparent' : 'bg-white text-gray-800 border-4 border-gray-300 hover:bg-gray-100 shadow-sm active:scale-95'}`}>
+                                   <Icons.ArrowRight className="w-6 h-6 xl:w-8 xl:h-8 rotate-180" /> <span className="hidden sm:inline">Sebelumnya</span>
+                               </button>
+                               
+                               {currentQIndex < shuffledQuestions.length - 1 ? (
+                                   <button onClick={handleNext} disabled={!isCurrentAnswered} className={`py-4 px-8 xl:py-5 xl:px-12 rounded-2xl font-black flex items-center gap-2 transition-all text-base md:text-lg xl:text-2xl touch-manipulation ${!isCurrentAnswered ? 'bg-gray-200 text-gray-400 cursor-not-allowed border-2 border-transparent' : 'bg-gradient-to-b from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white shadow-[0_6px_0_#92400e] active:shadow-none active:translate-y-2 border-none'}`}>
+                                       <span className="hidden sm:inline">Selanjutnya</span> <Icons.ArrowRight className="w-6 h-6 xl:w-8 xl:h-8" />
+                                   </button>
+                               ) : (
+                                   <button onClick={handleSubmit} disabled={!isCurrentAnswered} className={`py-4 px-8 xl:py-5 xl:px-12 rounded-2xl font-black flex items-center gap-2 transition-all text-base md:text-lg xl:text-2xl touch-manipulation uppercase tracking-wide ${!isCurrentAnswered ? 'bg-gray-200 text-gray-400 cursor-not-allowed border-2 border-transparent' : 'bg-gradient-to-b from-emerald-600 to-green-700 hover:from-emerald-500 hover:to-green-600 text-white shadow-[0_6px_0_#064e3b] active:shadow-none active:translate-y-2 border-none'}`}>
+                                       <Icons.CheckCircle className="w-6 h-6 xl:w-8 xl:h-8" /> Jawab
+                                   </button>
+                               )}
+                           </div>
+                       </div>
+                   </div>
+                </div>
+            );
+        }
+
+        function Level4Sulawesi({ onComplete, onCorrect }) {
+            const data = LEVEL_DATA[4];
+            const shuffledOptions = useMemo(() => shuffleArray(data.options), [data.options]);
+            
+            const [filledBlanks, setFilledBlanks] = useState({});
+            const [completed, setCompleted] = useState(false);
+            const [feedbackMsg, setFeedbackMsg] = useState("");
+            const [scoreLocal, setScoreLocal] = useState(0);
+
+            const [selectedWord, setSelectedWord] = useState(null);
+            const [dragOverId, setDragOverId] = useState(null);
+
+            const handleDragStart = (e, opt) => { e.dataTransfer.setData("opt", JSON.stringify(opt)); };
+            const handleDragOver = (e, bId) => { e.preventDefault(); setDragOverId(bId); };
+            const handleDragLeave = () => setDragOverId(null);
+            const handleDrop = (e, bId) => {
+                e.preventDefault();
+                setDragOverId(null);
+                const optData = e.dataTransfer.getData("opt");
+                if (optData) {
+                    const opt = JSON.parse(optData);
+                    setFilledBlanks(prev => ({ ...prev, [bId]: opt }));
+                    setFeedbackMsg("");
+                }
+            };
+
+            const handleRemove = (bId) => {
+                setFilledBlanks(prev => { const newB = {...prev}; delete newB[bId]; return newB; });
+                setFeedbackMsg("");
+            };
+
+            const handleWordClick = (opt) => setSelectedWord(selectedWord?.id === opt.id ? null : opt);
+            const handleBlankClick = (bId) => {
+                if (selectedWord) {
+                    setFilledBlanks(prev => ({...prev, [bId]: selectedWord}));
+                    setSelectedWord(null);
+                    setFeedbackMsg("");
+                } else if (filledBlanks[bId]) {
+                    handleRemove(bId);
+                }
+            };
+
+            const handleCheckAnswer = () => {
+                if (Object.keys(filledBlanks).length < data.blanks.length) {
+                    setFeedbackMsg("Lengkapi semua bagian yang rumpang di paragraf terlebih dahulu ya, Kak!");
+                    return;
+                }
+
+                let correctCountLocal = 0;
+                data.blanks.forEach(b => {
+                    if (filledBlanks[b.id]?.text === b.correct) correctCountLocal++;
+                });
+
+                if (correctCountLocal === data.blanks.length) {
+                    playSfx('correct');
+                } else {
+                    playSfx('incorrect');
+                }
+
+                if (onCorrect) { 
+                    for(let i=0; i<correctCountLocal; i++) onCorrect(); 
+                }
+                
+                setScoreLocal(correctCountLocal);
+                setCompleted(true);
+            };
+
+            const allFilled = Object.keys(filledBlanks).length === data.blanks.length;
+
+            return (
+                <div className="flex flex-col h-full w-full max-w-[1400px] mx-auto flex-1 min-h-0 pb-4">
+                    {!completed ? (
+                        <div className="bg-white/95 rounded-[2rem] shadow-xl border-4 border-amber-600 flex flex-col flex-1 min-h-0 mt-4 overflow-hidden p-4 md:p-8 xl:p-12 animate-fade-in">
+                            <div className="bg-amber-100 text-amber-900 p-4 md:p-6 xl:p-8 rounded-3xl text-center font-bold text-base md:text-xl xl:text-3xl border-l-8 border-amber-500 shadow-sm mb-4 flex-shrink-0 flex flex-col md:flex-row items-center md:items-start gap-4 xl:gap-6">
+                                <div className="bg-amber-600 text-white p-4 xl:p-5 rounded-2xl shadow-md"><Icons.BookOpen className="w-8 h-8 md:w-10 md:h-10 xl:w-14 xl:h-14 flex-shrink-0" /></div>
+                                <div className="text-center md:text-left flex-1">
+                                    <h3 className="font-black text-amber-900 mb-2 uppercase">{data.stimulusTitle}</h3>
+                                    <span className="leading-relaxed">{data.stimulusText}</span>
+                                </div>
+                            </div>
+
+                            <div className="bg-emerald-100 p-3 xl:p-4 rounded-xl border-l-4 border-emerald-600 text-center text-sm md:text-lg xl:text-xl font-bold text-emerald-900 mb-4 shadow-sm flex-shrink-0">
+                                💡 {data.instruction}
+                            </div>
+                            
+                            <div className="flex-grow overflow-y-auto custom-scrollbar pr-2 md:pr-4 flex flex-col gap-6 xl:gap-8 pb-10">
+                                
+                                <div className="bg-amber-50 p-4 md:p-6 xl:p-8 rounded-2xl border-2 border-dashed border-amber-400 flex flex-wrap gap-3 md:gap-4 justify-center shadow-inner min-h-[100px] flex-shrink-0 items-center">
+                                    {shuffledOptions.map(opt => {
+                                        const isUsed = Object.values(filledBlanks).some(b => b.id === opt.id);
+                                        if (isUsed) return null;
+                                        return (
+                                            <div
+                                                key={opt.id}
+                                                draggable
+                                                onDragStart={(e) => handleDragStart(e, opt)}
+                                                onClick={() => handleWordClick(opt)}
+                                                className={`px-4 py-3 xl:px-6 xl:py-4 rounded-xl border-4 font-black text-sm md:text-base xl:text-2xl cursor-pointer active:scale-95 shadow-sm transition-all select-none text-center touch-manipulation ${selectedWord?.id === opt.id ? 'bg-amber-600 border-amber-700 text-white scale-105 ring-4 ring-amber-300' : 'bg-white text-gray-800 border-amber-300 hover:bg-amber-100'}`}
+                                            >
+                                                {opt.text}
+                                            </div>
+                                        );
+                                    })}
+                                    {allFilled && <span className="text-amber-800 font-bold text-sm md:text-base xl:text-xl w-full text-center">Semua ruang rumpang telah terisi.</span>}
+                                </div>
+
+                                <div className="text-base md:text-2xl xl:text-4xl leading-loose xl:leading-loose text-gray-800 bg-white p-6 md:p-8 xl:p-12 rounded-[2rem] shadow-md border-2 border-amber-200 text-justify font-bold mt-2">
+                                    {data.paragraphSegments.map((segment, index) => {
+                                        const blank = data.blanks[index];
+                                        return (
+                                            <React.Fragment key={index}>
+                                                <span className="align-middle">{segment}</span>
+                                                {blank && (
+                                                    <span
+                                                        onDragOver={(e) => handleDragOver(e, blank.id)}
+                                                        onDragLeave={handleDragLeave}
+                                                        onDrop={(e) => handleDrop(e, blank.id)}
+                                                        onClick={() => handleBlankClick(blank.id)}
+                                                        className={`inline-flex items-center justify-center min-w-[140px] md:min-w-[200px] xl:min-w-[280px] h-[35px] md:h-[45px] xl:h-[60px] mx-2 md:mx-3 px-3 border-b-4 border-dashed rounded-lg transition-all cursor-pointer touch-manipulation align-middle relative ${dragOverId === blank.id || (selectedWord && !filledBlanks[blank.id]) ? 'bg-amber-100 border-amber-500 animate-pulse' : 'bg-gray-100 border-gray-400 hover:border-amber-400'} ${filledBlanks[blank.id] ? 'bg-emerald-100 border-emerald-500 border-solid shadow-sm' : ''}`}
+                                                    >
+                                                        {filledBlanks[blank.id] ? (
+                                                            <span className="font-black text-emerald-900 text-sm md:text-xl xl:text-3xl flex items-center justify-center group w-full relative">
+                                                                {filledBlanks[blank.id].text}
+                                                                <span className="md:hidden absolute -top-8 bg-red-500 text-white text-xs px-2 py-1 rounded">Tap hapus</span>
+                                                                <Icons.X className="w-5 h-5 xl:w-8 xl:h-8 text-red-500 absolute -right-6 md:-right-8 hidden group-hover:block cursor-pointer hover:scale-110 drop-shadow-md" onClick={(e) => {e.stopPropagation(); handleRemove(blank.id);}} />
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-gray-400 font-bold text-xs md:text-base xl:text-xl tracking-widest">[ KOSONG ]</span>
+                                                        )}
+                                                    </span>
+                                                )}
+                                            </React.Fragment>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                            
+                            <div className="mt-4 md:mt-6 pt-4 md:pt-6 border-t-4 border-amber-200 text-center flex-shrink-0 flex flex-col items-center">
+                                {feedbackMsg && <p className="text-red-700 font-black text-sm md:text-base xl:text-2xl mb-4 bg-red-100 p-4 md:p-5 rounded-2xl border-4 border-red-400 w-full max-w-4xl shadow-sm">{feedbackMsg}</p>}
+                                <button onClick={handleCheckAnswer} className="bg-gradient-to-b from-amber-600 to-orange-700 hover:from-amber-500 hover:to-orange-600 text-white font-black py-4 px-10 xl:py-6 xl:px-16 rounded-full shadow-[0_8px_0_#78350f] active:shadow-none active:translate-y-2 transition-all text-lg md:text-2xl xl:text-4xl flex items-center justify-center gap-4 w-full md:w-auto uppercase tracking-wide touch-manipulation">
+                                    <Icons.CheckCircle className="w-6 h-6 xl:w-10 xl:h-10" /> Verifikasi Logbook
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="bg-white/95 p-8 md:p-12 xl:p-20 rounded-[3rem] shadow-2xl text-center space-y-6 xl:space-y-8 border-4 border-amber-500 max-w-5xl mx-auto animate-fade-in mt-10">
+                            <div className="w-24 h-24 md:w-32 md:h-32 xl:w-40 xl:h-40 bg-amber-100 rounded-full flex items-center justify-center mx-auto text-5xl md:text-6xl xl:text-8xl shadow-inner border-8 border-amber-500">{scoreLocal === data.blanks.length ? '🏆' : '👍'}</div>
+                            <h3 className="text-3xl md:text-5xl xl:text-6xl font-black text-amber-900 uppercase tracking-wider mb-4">Logbook Diperbaiki!</h3>
+                            <p className="text-lg md:text-2xl xl:text-4xl font-bold text-gray-700 leading-relaxed">Terima kasih atas bantuanmu! <br/><br/>Kamu berhasil mengisi <span className="text-emerald-600 text-5xl xl:text-7xl mx-3 font-black">{scoreLocal}</span> dari {data.blanks.length} kata rumpang tentang kode kehormatan dengan tepat.</p>
+                            <button onClick={onComplete} className="bg-gradient-to-b from-emerald-600 to-green-700 hover:from-emerald-500 hover:to-green-600 text-white font-black w-full py-5 xl:py-8 text-xl md:text-3xl xl:text-5xl rounded-full shadow-[0_8px_0_#064e3b] active:shadow-none active:translate-y-2 transition-all mt-8 uppercase tracking-wide touch-manipulation">Lanjut ke Puncak 🚀</button>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function Level5Papua({ onComplete, saveRef, saveData }) {
+            const data = LEVEL_DATA[5];
+            const [rating, setRating] = useState(0);
+            const [a1, setA1] = useState("");
+            const [a2, setA2] = useState("");
+            const [a3, setA3] = useState("");
+            const [feedbackMsg, setFeedbackMsg] = useState("");
+
+            const handleFinish = () => {
+                if (rating === 0 || !a1.trim() || !a2.trim() || !a3.trim()) {
+                    setFeedbackMsg("Mohon berikan rating dan isi seluruh refleksi dengan lengkap ya, Kak!");
+                    return;
+                }
+                playSfx('correct');
+                saveData('final_project', { rating, pemahaman: a1, strategi: a2, aksi: a3 });
+                saveRef(a3);
+                onComplete();
+            };
+
+            return (
+                <div className="flex flex-col h-full w-full max-w-[1400px] mx-auto flex-1 min-h-0 pb-4 animate-fade-in justify-center">
+                    <div className="bg-white/95 p-6 md:p-10 xl:p-16 rounded-[3rem] shadow-2xl border-b-[12px] border-amber-600 w-full flex flex-col flex-1 min-h-0 mt-4 overflow-hidden">
+                        
+                        <div className="text-center border-b-4 border-amber-200 pb-5 md:pb-8 mb-5 md:mb-8 flex-shrink-0">
+                            <h3 className="text-3xl md:text-5xl xl:text-6xl font-black text-amber-900 uppercase tracking-wider mb-3">{data.title}</h3>
+                            <p className="text-base md:text-xl xl:text-3xl font-bold text-amber-700">{data.subtitle}</p>
+                        </div>
+
+                        <div className="flex-grow overflow-y-auto custom-scrollbar pr-3 space-y-6 md:space-y-10">
+                            
+                            <div className="bg-orange-50 p-5 md:p-8 xl:p-10 rounded-3xl border-4 border-orange-200 shadow-sm">
+                                <label className="block text-lg md:text-2xl xl:text-4xl font-black text-orange-900 mb-5 xl:mb-8 leading-relaxed">{data.questions.q1}</label>
+                                <div className="flex justify-center gap-4 md:gap-6 xl:gap-8 mb-6 xl:mb-8 bg-white py-5 rounded-2xl border-2 border-orange-100">
+                                    {[1, 2, 3, 4, 5].map(star => (
+                                        <Icons.Star 
+                                            key={star} 
+                                            onClick={() => { setRating(star); playSfx('click'); }} 
+                                            className={`w-14 h-14 md:w-20 md:h-20 xl:w-28 xl:h-28 cursor-pointer transition-all transform hover:scale-110 touch-manipulation ${rating >= star ? 'text-yellow-400 fill-yellow-400 drop-shadow-md' : 'text-gray-300 fill-gray-100'}`} 
+                                        />
+                                    ))}
+                                </div>
+                                <textarea rows="3" value={a1} onChange={e => setA1(e.target.value)} placeholder="Tuliskan pengalamanmu di sini..." className="w-full p-5 md:p-6 xl:p-8 rounded-2xl border-4 border-orange-200 bg-white outline-none focus:border-orange-500 font-bold text-gray-800 text-base md:text-xl xl:text-3xl resize-none shadow-inner leading-relaxed"></textarea>
+                            </div>
+
+                            <div className="bg-amber-50 p-5 md:p-8 xl:p-10 rounded-3xl border-4 border-amber-300 shadow-sm">
+                                <label className="block text-lg md:text-2xl xl:text-4xl font-black text-amber-900 mb-5 xl:mb-8 leading-relaxed">{data.questions.q2}</label>
+                                <textarea rows="3" value={a2} onChange={e => setA2(e.target.value)} placeholder="Poin Dasadarma yang sulit menurutku adalah..." className="w-full p-5 md:p-6 xl:p-8 rounded-2xl border-4 border-amber-300 bg-white outline-none focus:border-amber-600 font-bold text-gray-800 text-base md:text-xl xl:text-3xl resize-none shadow-inner leading-relaxed"></textarea>
+                            </div>
+
+                            <div className="bg-emerald-50 p-5 md:p-8 xl:p-10 rounded-3xl border-4 border-emerald-300 shadow-sm">
+                                <label className="block text-lg md:text-2xl xl:text-4xl font-black text-emerald-900 mb-5 xl:mb-8 leading-relaxed">{data.questions.q3}</label>
+                                <textarea rows="3" value={a3} onChange={e => setA3(e.target.value)} placeholder="Misal: 'Saya akan mengamalkan Suci pikiran - Saya berjanji tidak akan menyontek saat ujian hari ini.'" className="w-full p-5 md:p-6 xl:p-8 rounded-2xl border-4 border-emerald-300 bg-white outline-none focus:border-emerald-600 font-bold text-gray-800 text-base md:text-xl xl:text-3xl resize-none shadow-inner leading-relaxed"></textarea>
+                            </div>
+
+                        </div>
+
+                        <div className="mt-8 pt-6 border-t-4 border-amber-100 flex flex-col items-center flex-shrink-0">
+                            {feedbackMsg && <p className="text-red-700 font-black text-sm md:text-base xl:text-2xl mb-5 bg-red-100 p-4 xl:p-6 rounded-2xl border-2 border-red-300 text-center w-full shadow-sm">{feedbackMsg}</p>}
+                            <button onClick={handleFinish} className="bg-gradient-to-b from-amber-600 to-orange-700 hover:from-amber-500 hover:to-orange-600 text-white font-black py-4 px-10 md:py-5 xl:py-8 xl:px-20 rounded-full shadow-[0_8px_0_#78350f] active:shadow-none active:translate-y-2 transition-all text-lg md:text-2xl xl:text-4xl flex items-center justify-center gap-4 w-full md:w-auto uppercase tracking-wider touch-manipulation">
+                                <Icons.Award className="w-8 h-8 md:w-10 md:h-10 xl:w-14 xl:h-14" /> Sahkan Logbook Regu!
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function EndScreen({ userData, correctCount, onRestart, playerName, playerSchool }) {
+            const [isSaving, setIsSaving] = useState(false);
+            const [saveStatus, setSaveStatus] = useState("idle"); 
+
+            const handleSaveToGoogleSheets = async () => {
+                if(!GOOGLE_SCRIPT_URL || GOOGLE_SCRIPT_URL.includes("mock-url")) return setSaveStatus("error");
+                setIsSaving(true);
+                
+                const payload = {
+                    nama: playerName, sekolah: playerSchool, skor: correctCount, benar: correctCount,
+                    ref1: "-", ref2: "-", ref3: "-", ref4: "-",
+                    papua_masalah: userData.final_project?.pemahaman || "-",
+                    papua_solusi: userData.final_project?.strategi || "-",
+                    papua_kampanye: userData.final_project ? `Janji Dasa Darma: ${userData.final_project.aksi} | Rating: ${userData.final_project.rating}` : "-",
+                };
+                
+                try {
+                    await fetch(GOOGLE_SCRIPT_URL, { method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+                    setSaveStatus("success");
+                } catch (error) { setSaveStatus("error"); } finally { setIsSaving(false); }
+            };
+
+            return (
+                <div className="flex flex-col items-center justify-center gap-6 xl:gap-10 animate-fade-in w-full flex-1 min-h-0 overflow-y-auto pb-8 pt-4">
+                  <div className="text-center bg-white/95 p-6 md:p-10 xl:p-16 rounded-[3rem] shadow-2xl w-full max-w-3xl xl:max-w-5xl border-4 border-amber-500">
+                    <img src={LOGO_IMAGE_URL} alt="Logo" className="w-28 h-28 md:w-36 md:h-36 xl:w-56 xl:h-56 object-contain mx-auto animate-bounce-slow drop-shadow-2xl rounded-3xl border-4 border-white mb-6 p-2 bg-white" />
+                    <h2 className="text-4xl md:text-6xl xl:text-8xl font-black text-amber-700 mt-4 xl:mt-8 drop-shadow-sm uppercase tracking-wider">SELAMAT!</h2>
+                    <p className="text-xl md:text-3xl xl:text-5xl font-bold mt-4 xl:mt-6 text-gray-800">{playerName}, <br/><span className="text-emerald-700 block mt-3">Penjelajah Sejati Pramuka</span></p>
+                    <div className="text-xl md:text-3xl xl:text-5xl font-black text-gray-600 mt-8 xl:mt-12 bg-amber-50 p-6 md:p-8 xl:p-10 rounded-3xl border-4 border-amber-200 shadow-inner">
+                        Total Skor Penjelajahan <br/><span className="text-7xl md:text-8xl xl:text-[10rem] text-amber-600 text-outline inline-block mt-6 mb-4 drop-shadow-xl">{correctCount}</span><br/><span className="text-lg md:text-2xl xl:text-4xl text-amber-800">Bintang Tanda Kecakapan Khusus</span>
+                    </div>
+                  </div>
+
+                  <div className="w-full max-w-3xl xl:max-w-5xl bg-white p-6 md:p-10 xl:p-14 rounded-[3rem] shadow-xl border-b-8 border-emerald-500 relative text-base">
+                    <div className="text-center border-b-4 border-gray-100 pb-4 xl:pb-8 mb-4 xl:mb-8">
+                      <h3 className="font-black text-2xl md:text-4xl xl:text-6xl text-emerald-900 uppercase tracking-wide">Janji Pandu</h3>
+                      <p className="text-emerald-700 font-bold text-lg md:text-2xl xl:text-4xl mt-3 xl:mt-5 bg-emerald-50 inline-block px-6 md:px-8 py-2 md:py-3 rounded-full border border-emerald-300">{playerName} - {playerSchool}</p>
+                    </div>
+                    <div className="space-y-3 xl:space-y-5 max-h-48 xl:max-h-80 overflow-y-auto pr-3 custom-scrollbar text-sm md:text-base xl:text-3xl">
+                      <p className="bg-amber-50 p-6 xl:p-10 rounded-3xl border-2 border-amber-200 shadow-sm text-gray-800 font-bold leading-relaxed">
+                          <span className="text-amber-900 block mb-3 xl:mb-5 font-black uppercase tracking-wider text-sm md:text-lg xl:text-2xl">Tindakan Nyata Dasa Darma Hari Ini:</span> 
+                          "{userData.ref5 || '-'}"
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="w-full max-w-3xl xl:max-w-5xl space-y-4 xl:space-y-6 mt-6">
+                    {saveStatus === 'idle' && <button onClick={handleSaveToGoogleSheets} disabled={isSaving} className="bg-gradient-to-b from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-black w-full py-5 md:py-6 xl:py-8 rounded-full flex items-center justify-center gap-3 md:gap-5 text-xl md:text-3xl xl:text-4xl shadow-[0_8px_0_#1e3a8a] active:shadow-none active:translate-y-2 transition-all uppercase tracking-wide touch-manipulation">{isSaving ? "Menyimpan Logbook..." : <><Icons.Save className="w-6 h-6 md:w-8 md:h-8 xl:w-12 xl:h-12"/> Kumpul Logbook ke Pembina</>}</button>}
+                    {saveStatus === 'success' && <div className="bg-green-100 text-green-800 p-6 xl:p-8 rounded-2xl text-center font-black text-xl xl:text-3xl border-4 border-green-400 shadow-sm">Logbook Berhasil Terkirim! ✅</div>}
+                    {saveStatus === 'error' && <div className="bg-red-100 text-red-800 p-6 xl:p-8 rounded-2xl text-center font-black text-xl xl:text-3xl border-4 border-red-300 shadow-sm">Gagal terhubung dengan server Pembina. <button onClick={()=>setSaveStatus('idle')} className="underline text-red-700 ml-2 hover:text-red-900 transition-colors">Coba lagi</button></div>}
+                    <button onClick={onRestart} className="bg-gradient-to-b from-amber-700 to-amber-900 hover:from-amber-600 hover:to-amber-800 text-white font-black w-full py-5 md:py-6 xl:py-8 rounded-full flex items-center justify-center gap-3 md:gap-5 text-xl md:text-3xl xl:text-4xl shadow-[0_8px_0_#451a03] active:shadow-none active:translate-y-2 transition-all uppercase tracking-wide touch-manipulation"><Icons.RefreshCcw className="w-6 h-6 md:w-8 md:h-8 xl:w-12 xl:h-12"/> Jelajah Ulang</button>
+                  </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<PetualanganPramuka />);
+    </script>
+</body>
+</html>
